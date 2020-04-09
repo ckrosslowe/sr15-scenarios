@@ -20,27 +20,24 @@ meta <- read_excel("data/sr15_metadata_indicators_r2.0.xlsx", sheet="meta") %>%
 # Read model data
 runs <- read.csv("data/runs_clean.csv", header=T, stringsAsFactors = F)
 
-# Read actual generation data from GER
-ger <- read.csv("data/global_electricity_review_2020_v2.csv", header = T) %>%
-  filter(Country %in% "World") %>%
-  mutate(Type2 = ifelse(Type %in% "Coal", "Coal", 
-                        ifelse(Type %in% "Gas", "Gas", 
-                               ifelse(Type %in% c("Solar", "Wind", "Hydro"), "Renewables", "Other"))))
+# Read actual generation data from GER (with IPCC region variable)
+ger <- read.csv("data/ger_ipcc.csv", header = T, stringsAsFactors = F) %>%
+  select(-Source)
 
 # ==== Filter scenarios ====
 
 # --- Temperature
-temp_cats <- c("1.5C low overshoot", "Below 1.5C")
-#temp_cats <- c("1.5C low overshoot", "Below 1.5C", "1.5C high overshoot", "Lower 2C", "Higher 2C")
+#temp_cats <- c("1.5C low overshoot", "Below 1.5C")
+temp_cats <- c("1.5C low overshoot", "Below 1.5C", "1.5C high overshoot", "Lower 2C", "Higher 2C")
 
 temp_ms <- meta$mod_scen[meta$category %in% temp_cats]
 # Select runs that meet temp criteria
 runs <- runs %>% filter(mod_scen %in% temp_ms)
 
-t_lab <- "<1.5C"
-t_folder <- "temp_1p5C"
-#t_lab <- "<2C"
-#t_folder <- "temp_2C"
+#t_lab <- "<1.5C"
+#t_folder <- "temp_1p5C"
+t_lab <- "<2C"
+t_folder <- "temp_2C"
 
 # --- BECCS & Bioenergy - global
 # Global bioenergy use in 2050
@@ -55,17 +52,36 @@ beccs_lim <- 5000
 keep_ms <- runs$mod_scen[runs$Year==2050 & runs$Region %in% "World" & runs$CarbonSequestration.CCS.Biomass<=beccs_lim & runs$PrimaryEnergy.Biomass<=bio_lim]
 
 # --- Region
+#reg <- "R5OECD90+EU"    # IPCC name
+#reg_lab <- "OECD90_EU"  # GER name and chart label 
+
+#reg <- "R5MAF"
+#reg_lab <- "MAF"
+
+#reg <- "R5ASIA"
+#reg_lab <- "ASIA"
+
+#reg <- "R5LAM"
+#reg_lab <- "LAM"
+
+#reg <- "R5REF"
+#reg_lab <- "REF"
+
+#reg <- "R5ROWO"
+#reg_lab <- "ROW"
+
 reg <- "World"
 reg_lab <- "World"
 
 # --- FILTER runs
 runs <- filter(runs, mod_scen %in% keep_ms, Region %in% reg)
 
-
+# --- REMOVE runs that don't include selected breakdowns
+if (!reg  %in% "World") runs <- filter(runs, !mod_scen %in% "MESSAGEix-GLOBIOM 1.0 | LowEnergyDemand")
 
 ######### PLOTS ############
 
-year_range <- c(2000, 2100)
+year_range <- c(2005, 2100)
 
 # ---- Electricity Variables Reference:
 #SecondaryEnergy.Electricity.#SecondaryEnergy.Electricity.Biomass
@@ -101,7 +117,7 @@ year_range <- c(2000, 2100)
 table(runs$mod_scen, useNA="always", is.na(runs$SecondaryEnergy.Electricity))
 
 #SecondaryEnergy|Electricity
-png(file=paste0(t_folder,"/elec_demand.png"),width=600,height=400,res=150,type='cairo')
+png(file=paste0("plots/elec_demand_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=600,height=400,res=150,type='cairo')
 ggplot(runs[!is.na(runs$SecondaryEnergy.Electricity),], 
        aes(x=Year, y=SecondaryEnergy.Electricity, group=mod_scen)) +
   geom_line(aes(color=mod_scen), size=1) +
@@ -113,7 +129,7 @@ dev.off()
 
 # Electrification
 # Electricity as a % of final energy
-png(file=paste0(t_folder,"/electrification.png"),width=600,height=400,res=150,type='cairo')
+png(file=paste0("plots/electrification_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=600,height=400,res=150,type='cairo')
 ggplot(runs[!is.na(runs$SecondaryEnergy.Electricity) & !is.na(runs$FinalEnergy),], 
        aes(x=Year, y=100*SecondaryEnergy.Electricity/FinalEnergy, group=mod_scen)) +
   geom_line(aes(color=mod_scen), size=1) +
@@ -124,7 +140,10 @@ ggplot(runs[!is.na(runs$SecondaryEnergy.Electricity) & !is.na(runs$FinalEnergy),
 dev.off()
 
 # ---- Fossil demand ----
-png(file=paste0(t_folder,"/fossil_demand.png"),width=600,height=400,res=150,type='cairo')
+# Completeness test
+table(runs$mod_scen, useNA="ifany", is.na(runs$PrimaryEnergy.Fossil))
+
+png(file=paste0("plots/fossil_demand_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=600,height=400,res=150,type='cairo')
 ggplot(runs[!is.na(runs$PrimaryEnergy.Fossil) & !is.na(runs$PrimaryEnergy),], 
        aes(x=Year, y=100*PrimaryEnergy.Fossil/PrimaryEnergy, group=mod_scen)) +
   geom_line(aes(color=mod_scen), size=1) +
@@ -192,7 +211,7 @@ ccs_p <- ggplot(runs[!is.na(runs$SecondaryEnergy.Electricity.Coal.wCCS) & !is.na
   lims(x=year_range) +
   scale_color_viridis(discrete=T)
 
-png(file=paste0(t_folder,"/elec_mix.png"),width=600,height=800,res=150,type='cairo')
+png(file=paste0("plots/elec_mix_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=600,height=800,res=150,type='cairo')
 plot_grid(coal_p, gas_p, renew_p, bio_p, nuc_p, ccs_p, nrow=3, labels=c(paste0(t_lab, ", ", reg_lab)))
 dev.off()
 
@@ -202,7 +221,7 @@ dev.off()
 table(runs$mod_scen, useNA="always", is.na(runs$Price.SecondaryEnergy.Electricity))
 # Only 1/6 1.5C scenarios has electricity price
 
-png(file=paste0(t_folder,"/electricity_price.png"),width=600,height=400,res=150,type='cairo')
+png(file=paste0("plots/electricity_price_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=600,height=400,res=150,type='cairo')
 ggplot(runs[!is.na(runs$Price.SecondaryEnergy.Electricity),], 
        aes(x=Year, y=Price.SecondaryEnergy.Electricity, group=mod_scen)) +
   geom_line(aes(color=mod_scen), size=1) +
@@ -217,7 +236,7 @@ dev.off()
 table(runs$mod_scen, useNA="always", is.na(runs$Price.Carbon))
 # All 1.5C scenarios has carbon price
 
-png(file=paste0(t_folder,"/carbon_price.png"),width=600,height=400,res=150,type='cairo')
+png(file=paste0("plots/carbon_price_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=600,height=400,res=150,type='cairo')
 ggplot(runs[!is.na(runs$Price.Carbon),], 
        aes(x=Year, y=Price.Carbon, group=mod_scen)) +
   geom_line(aes(color=mod_scen), size=1) +
@@ -233,7 +252,7 @@ table(runs$mod_scen, useNA="always", is.na(runs$Investment.EnergySupply.Electric
 # Only 3/6 1.5C scenarios has electricity investmants
 
 # Not that enlightening for 1.5C
-png(file=paste0(t_folder,"/elec_investment.png"),width=600,height=400,res=150,type='cairo')
+png(file=paste0("plots/elec_investment_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=600,height=400,res=150,type='cairo')
 ggplot(runs[!is.na(runs$Investment.EnergySupply.Electricity),], 
        aes(x=Year, y=Investment.EnergySupply.Electricity, group=mod_scen)) +
   geom_line(aes(color=mod_scen), size=1) +
@@ -246,100 +265,100 @@ dev.off()
 
 # ---- Proportion of fossil that's abated ----
 
-table(runs$mod_scen, useNA="always", is.na(runs$SecondaryEnergy.Electricity.Fossil.wCCS))
-table(runs$mod_scen, useNA="always", is.na(runs$SecondaryEnergy.Electricity.Fossil.woCCS))
-table(runs$mod_scen, useNA="always", is.na(runs$SecondaryEnergy.Electricity.Fossil2))
-
-png(file=paste0(t_folder,"/fraction_fossil_abated.png"),width=600,height=400,res=150,type='cairo')
-ggplot(runs[!is.na(runs$SecondaryEnergy.Electricity.Fossil.wCCS) & !is.na(runs$SecondaryEnergy.Electricity.Fossil2),], 
-       aes(x=Year, y=100*SecondaryEnergy.Electricity.Fossil.wCCS/SecondaryEnergy.Electricity.Fossil2, group=mod_scen)) +
-  geom_line(aes(color=mod_scen), size=1) +
-  labs(x="", y="% of production", title="Proportion of fossil production with CCS", subtitle=paste0(t_lab,", ",reg_lab)) +
-  theme(legend.position = "none") +
-  lims(x=year_range) +
-  scale_color_viridis(discrete=T)
-dev.off()
+#table(runs$mod_scen, useNA="always", is.na(runs$SecondaryEnergy.Electricity.Fossil.wCCS))
+#table(runs$mod_scen, useNA="always", is.na(runs$SecondaryEnergy.Electricity.Fossil.woCCS))
+#table(runs$mod_scen, useNA="always", is.na(runs$SecondaryEnergy.Electricity.Fossil2))
+#
+#png(file=paste0(t_folder,"/fraction_fossil_abated.png"),width=600,height=400,res=150,type='cairo')
+#ggplot(runs[!is.na(runs$SecondaryEnergy.Electricity.Fossil.wCCS) & !is.na(runs$SecondaryEnergy.Electricity.Fossil2),], 
+#       aes(x=Year, y=100*SecondaryEnergy.Electricity.Fossil.wCCS/SecondaryEnergy.Electricity.Fossil2, group=mod_scen)) +
+#  geom_line(aes(color=mod_scen), size=1) +
+#  labs(x="", y="% of production", title="Proportion of fossil production with CCS", subtitle=paste0(t_lab,", ",reg_lab)) +
+#  theme(legend.position = "none") +
+#  lims(x=year_range) +
+#  scale_color_viridis(discrete=T)
+#dev.off()
 
 # ---- Proportion of biomass that's abated ----
 
-png(file=paste0(t_folder,"/fraction_biomass_abated.png"),width=600,height=400,res=150,type='cairo')
-ggplot(runs[!is.na(runs$SecondaryEnergy.Electricity.Biomass.wCCS) & !is.na(runs$SecondaryEnergy.Electricity.Biomass),], 
-       aes(x=Year, y=100*SecondaryEnergy.Electricity.Biomass.wCCS/SecondaryEnergy.Electricity.Biomass, group=mod_scen)) +
-  geom_line(aes(color=mod_scen), size=1) +
-  labs(x="", y="% of production", title="Proportion of biomass production with CCS", subtitle=paste0(t_lab,", ",reg_lab)) +
-  theme(legend.position = "none") +
-  lims(x=year_range) +
-  scale_color_viridis(discrete=T)
-dev.off()
+#png(file=paste0(t_folder,"/fraction_biomass_abated.png"),width=600,height=400,res=150,type='cairo')
+#ggplot(runs[!is.na(runs$SecondaryEnergy.Electricity.Biomass.wCCS) & !is.na(runs$SecondaryEnergy.Electricity.Biomass),], 
+#       aes(x=Year, y=100*SecondaryEnergy.Electricity.Biomass.wCCS/SecondaryEnergy.Electricity.Biomass, group=mod_scen)) +
+#  geom_line(aes(color=mod_scen), size=1) +
+#  labs(x="", y="% of production", title="Proportion of biomass production with CCS", subtitle=paste0(t_lab,", ",reg_lab)) +
+#  theme(legend.position = "none") +
+#  lims(x=year_range) +
+#  scale_color_viridis(discrete=T)
+#dev.off()
 
 
 # ---- Capacity ----
 # NOT VERY USEFUL
 
-table(runs$mod_scen, useNA="always", is.na(runs$Capacity.Electricity.Coal))
-table(runs$mod_scen, useNA="always", is.na(runs$CumulativeCapacity.Electricity.Coal.woCCS))
-table(runs$mod_scen, useNA="always", is.na(runs$CumulativeCapacity.Electricity.Coal.wCCS))
-table(runs$mod_scen, useNA="always", is.na(runs$CumulativeCapacity.Electricity.Coal))
-table(runs$mod_scen, useNA="always", is.na(runs$CumulativeCapacity.Electricity.Gas))
-table(runs$mod_scen, useNA="always", is.na(runs$CumulativeCapacity.Electricity.Biomass))
-
-
-# Coal -
-png(file=paste0(t_folder,"/coal_capacity.png"),width=600,height=400,res=150,type='cairo')
-ggplot(runs[!is.na(runs$CumulativeCapacity.Electricity.Coal) & !is.na(runs$CumulativeCapacity.Electricity.Coal.wCCS),], 
-       aes(x=Year, group=mod_scen)) +
-  geom_line(aes(color=mod_scen, y=CumulativeCapacity.Electricity.Coal.wCCS), size=1, linetype="dashed") +
-  geom_line(aes(y=CumulativeCapacity.Electricity.Coal, color=mod_scen), size=1, linetype="solid") +
-  labs(x="", y="Cumulative capacity (GW)", title="Abated vs unabated coal", subtitle=paste0(t_lab,", ",reg_lab)) +
-  theme(legend.position = "none") +
-  lims(x=year_range) +
-  scale_color_viridis(discrete=T)
-dev.off()
-
-# Gas -
-png(file=paste0(t_folder,"/gas_capacity.png"),width=600,height=500,res=150,type='cairo')
-ggplot(runs[!is.na(runs$CumulativeCapacity.Electricity.Gas) & !is.na(runs$CumulativeCapacity.Electricity.Gas.wCCS),], 
-       aes(x=Year, group=mod_scen)) +
-  geom_line(aes(color=mod_scen, y=CumulativeCapacity.Electricity.Gas.wCCS), size=1, linetype="dashed") +
-  geom_line(aes(y=CumulativeCapacity.Electricity.Gas, color=mod_scen), size=1, linetype="solid") +
-  labs(x="", y="Cumulative capacity (GW)", title="Abated vs unabated gas", subtitle=paste0(t_lab,", ",reg_lab), color="") +
-  theme(legend.position = "bottom",
-        legend.direction = "vertical",
-        text=element_text(size=8)) +
-  lims(x=year_range) +
-  scale_color_viridis(discrete=T, guide = guide_legend(override.aes = list(linetype="solid"))) 
-  #scale_color_manual(guide = guide_legend(override.aes = list(linetype="solid")))
-dev.off()
-
-# Biomass -
-png(file=paste0(t_folder,"/biomass_capacity.png"),width=600,height=500,res=150,type='cairo')
-ggplot(runs[!is.na(runs$CumulativeCapacity.Electricity.Biomass) & !is.na(runs$CumulativeCapacity.Electricity.Biomass.wCCS),], 
-       aes(x=Year, group=mod_scen)) +
-  geom_line(aes(color=mod_scen, y=CumulativeCapacity.Electricity.Biomass.wCCS), size=1, linetype="dashed") +
-  geom_line(aes(y=CumulativeCapacity.Electricity.Biomass, color=mod_scen), size=1, linetype="solid") +
-  labs(x="", y="Cumulative capacity (GW)", title="Abated vs unabated Biomass", subtitle=paste0(t_lab,", ",reg_lab), color="") +
-  theme(legend.position = "bottom",
-        legend.direction = "vertical",
-        text=element_text(size=8)) +
-  #theme(legend.position = "none") +
-  lims(x=year_range) +
-  scale_color_viridis(discrete=T, guide = guide_legend(override.aes = list(linetype="solid"))) 
-#scale_color_manual(guide = guide_legend(override.aes = list(linetype="solid")))
-dev.off()
+#table(runs$mod_scen, useNA="always", is.na(runs$Capacity.Electricity.Coal))
+#table(runs$mod_scen, useNA="always", is.na(runs$CumulativeCapacity.Electricity.Coal.woCCS))
+#table(runs$mod_scen, useNA="always", is.na(runs$CumulativeCapacity.Electricity.Coal.wCCS))
+#table(runs$mod_scen, useNA="always", is.na(runs$CumulativeCapacity.Electricity.Coal))
+#table(runs$mod_scen, useNA="always", is.na(runs$CumulativeCapacity.Electricity.Gas))
+#table(runs$mod_scen, useNA="always", is.na(runs$CumulativeCapacity.Electricity.Biomass))
+#
+#
+## Coal -
+#png(file=paste0(t_folder,"/coal_capacity.png"),width=600,height=400,res=150,type='cairo')
+#ggplot(runs[!is.na(runs$CumulativeCapacity.Electricity.Coal) & !is.na(runs$CumulativeCapacity.Electricity.Coal.wCCS),], 
+#       aes(x=Year, group=mod_scen)) +
+#  geom_line(aes(color=mod_scen, y=CumulativeCapacity.Electricity.Coal.wCCS), size=1, linetype="dashed") +
+#  geom_line(aes(y=CumulativeCapacity.Electricity.Coal, color=mod_scen), size=1, linetype="solid") +
+#  labs(x="", y="Cumulative capacity (GW)", title="Abated vs unabated coal", subtitle=paste0(t_lab,", ",reg_lab)) +
+#  theme(legend.position = "none") +
+#  lims(x=year_range) +
+#  scale_color_viridis(discrete=T)
+#dev.off()
+#
+## Gas -
+#png(file=paste0(t_folder,"/gas_capacity.png"),width=600,height=500,res=150,type='cairo')
+#ggplot(runs[!is.na(runs$CumulativeCapacity.Electricity.Gas) & !is.na(runs$CumulativeCapacity.Electricity.Gas.wCCS),], 
+#       aes(x=Year, group=mod_scen)) +
+#  geom_line(aes(color=mod_scen, y=CumulativeCapacity.Electricity.Gas.wCCS), size=1, linetype="dashed") +
+#  geom_line(aes(y=CumulativeCapacity.Electricity.Gas, color=mod_scen), size=1, linetype="solid") +
+#  labs(x="", y="Cumulative capacity (GW)", title="Abated vs unabated gas", subtitle=paste0(t_lab,", ",reg_lab), color="") +
+#  theme(legend.position = "bottom",
+#        legend.direction = "vertical",
+#        text=element_text(size=8)) +
+#  lims(x=year_range) +
+#  scale_color_viridis(discrete=T, guide = guide_legend(override.aes = list(linetype="solid"))) 
+#  #scale_color_manual(guide = guide_legend(override.aes = list(linetype="solid")))
+#dev.off()
+#
+## Biomass -
+#png(file=paste0(t_folder,"/biomass_capacity.png"),width=600,height=500,res=150,type='cairo')
+#ggplot(runs[!is.na(runs$CumulativeCapacity.Electricity.Biomass) & !is.na(runs$CumulativeCapacity.Electricity.Biomass.wCCS),], 
+#       aes(x=Year, group=mod_scen)) +
+#  geom_line(aes(color=mod_scen, y=CumulativeCapacity.Electricity.Biomass.wCCS), size=1, linetype="dashed") +
+#  geom_line(aes(y=CumulativeCapacity.Electricity.Biomass, color=mod_scen), size=1, linetype="solid") +
+#  labs(x="", y="Cumulative capacity (GW)", title="Abated vs unabated Biomass", subtitle=paste0(t_lab,", ",reg_lab), color="") +
+#  theme(legend.position = "bottom",
+#        legend.direction = "vertical",
+#        text=element_text(size=8)) +
+#  #theme(legend.position = "none") +
+#  lims(x=year_range) +
+#  scale_color_viridis(discrete=T, guide = guide_legend(override.aes = list(linetype="solid"))) 
+##scale_color_manual(guide = guide_legend(override.aes = list(linetype="solid")))
+#dev.off()
 
 
 # ---- CCS breakdown ----
-table(runs$mod_scen, useNA="always", is.na(runs$CarbonSequestration.CCS.Biomass))
+#table(runs$mod_scen, useNA="always", is.na(runs$CarbonSequestration.CCS.Biomass))
 # All 1.5 scenarios have it
-table(runs$mod_scen, useNA="always", is.na(runs$CarbonSequestration.CCS.Fossil))
+#table(runs$mod_scen, useNA="always", is.na(runs$CarbonSequestration.CCS.Fossil))
 # 4/6 1.5 scenarios have it
-table(runs$mod_scen, useNA="always", is.na(runs$CarbonSequestration.LandUse))
+#table(runs$mod_scen, useNA="always", is.na(runs$CarbonSequestration.LandUse))
 # 5/6 1.5 scenarios have it
-table(runs$mod_scen, useNA="always", is.na(runs$SecondaryEnergy.Electricity.Coal.wCCS))
+#table(runs$mod_scen, useNA="always", is.na(runs$SecondaryEnergy.Electricity.Coal.wCCS))
 # All 1.5
-table(runs$mod_scen, useNA="always", is.na(runs$SecondaryEnergy.Electricity.Gas.wCCS))
+#table(runs$mod_scen, useNA="always", is.na(runs$SecondaryEnergy.Electricity.Gas.wCCS))
 # All 1.5
-table(runs$mod_scen, useNA="always", is.na(runs$SecondaryEnergy.Electricity.Biomass.wCCS))
+#table(runs$mod_scen, useNA="always", is.na(runs$SecondaryEnergy.Electricity.Biomass.wCCS))
 # All 1.5
 
 coal_lims <- c(0, 1.1*max(runs$SecondaryEnergy.Electricity.Coal, na.rm=T))
@@ -427,7 +446,7 @@ bio_ccs_p <- ggplot(runs[!is.na(runs$SecondaryEnergy.Electricity.Biomass.wCCS),]
   lims(x=year_range, y=bio_lims) +
   scale_color_viridis(discrete=T)
 
-png(file=paste0(t_folder,"/ccs_breakdown.png"),width=800,height=800,res=150,type='cairo')
+png(file=paste0("plots/ccs_breakdown_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=800,height=800,res=150,type='cairo')
 plot_grid(coal_all_p, coal_no_ccs_p, coal_ccs_p, gas_all_p, gas_no_ccs_p, gas_ccs_p, bio_all_p, bio_no_ccs_p, bio_ccs_p, nrow=3, labels=c(paste0(t_lab,", ",reg_lab)))
 dev.off()
 
@@ -435,7 +454,7 @@ dev.off()
 # ==== Summarising scenarios ====
 test_yr <- 2050
 table(runs$mod_scen[runs$Year==test_yr], useNA="always", is.na(runs$FinalEnergy[runs$Year==test_yr]))
-# all 1.5C scenarios have 2020, 2030, and 2050!
+# all 1.5C scenarios at World level have 2020, 2030, and 2050!
 
 coal_sum <- runs %>%
   filter(Year %in% c(2020, 2030, 2040, 2050)) %>%
@@ -476,10 +495,18 @@ renew_sum <- runs %>%
 
 runs_summary <- bind_rows(coal_sum, coal_woCCS_sum, gas_woCCS_sum, renew_sum)
 
-ger_sum <- ger %>%
-  group_by(Type2, Year) %>%
-  summarise(Value_TWh = sum(Value_TWh)) %>%
-  ungroup()
+if (reg_lab == "World") {
+  ger_sum <- ger %>%
+    group_by(Type2, Year) %>%
+    summarise(Value_TWh = sum(Value_TWh)) %>%
+    ungroup()
+} else {
+  ger_sum <- ger %>%
+    filter(Region_ipcc %in% reg_lab) %>%
+    group_by(Type2, Year) %>%
+    summarise(Value_TWh = sum(Value_TWh)) %>%
+    ungroup()
+}
 
 # Function to plot different summarised technologies
 # fuel_type
@@ -550,30 +577,23 @@ med_plot <- function(fuel_type, yr_max, ttl) {
     scale_color_manual(values=med_fuel_cols, labels=med_fuel_labs)
 }
 
-png(file=paste0(t_folder,"/all_coal_sum.png"),width=900,height=600,res=150,type='cairo')
+png(file=paste0("plots/all_coal_sum_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=900,height=600,res=150,type='cairo')
 med_plot("Coal", 2050, "all Coal")
 dev.off()
 
-png(file=paste0(t_folder,"/coal_woCCS_sum.png"),width=900,height=600,res=150,type='cairo')
+png(file=paste0("plots/coal_woCCS_sum_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=900,height=600,res=150,type='cairo')
 med_plot("Coal_woCCS", 2050, "unabated Coal")
 dev.off()
 
-png(file=paste0(t_folder,"/gas_woCCS_sum.png"),width=900,height=600,res=150,type='cairo')
+png(file=paste0("plots/gas_woCCS_sum_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=900,height=600,res=150,type='cairo')
 med_plot("Gas_woCCS", 2050, "unabated Gas")
 dev.off()
 
-png(file=paste0(t_folder,"/renew_sum.png"),width=900,height=600,res=150,type='cairo')
+png(file=paste0("plots/renew_sum_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=900,height=600,res=150,type='cairo')
 med_plot("Renew", 2050, "Solar + Wind + Hydro")
 dev.off()
 
-# ==== 1.5C vs 2C samples ====
-
-# I ran the above twice, to get 1.5C and 2C sets of runs + summary info, then saved these to csv 
-#runs_summary_2 <- runs_summary
-#runs_2 <- runs
-#runs_summary_15 <- runs_summary
-#runs_15 <- runs
+# ==== WRITE RESULTS ====
 
 write.csv(runs_summary, file=paste0("data/runs_summary_",reg_lab,"_",str_replace(t_lab,"<",""),".csv"), row.names=F)
-#write.csv(runs, file="data/runs_2C.csv", row.names=F)
 

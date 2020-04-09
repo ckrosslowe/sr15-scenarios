@@ -21,6 +21,112 @@ colnames(runs) <- gsub(" ", "", colnames(runs))
 colnames(runs) <- gsub("\\|", ".", colnames(runs))
 colnames(runs) <- gsub("\\/", "", colnames(runs))
 
+# GER data
+# Map GER data into model regions
+OECD90_EU <- c("Albania", "Australia", "Austria",
+               "Belgium", "Bosnia and Herzegovina", "Bulgaria",
+               "Canada", "Croatia", "Cyprus", "Czech Republic",
+               "Denmark",
+               "Estonia",
+               "Finland", "France",
+               "Germany", "Greece", "Guam",
+               "Hungary",
+               "Iceland", "Ireland", "Italy",
+               "Japan",
+               "Kosovo",
+               "Latvia", "Lithuania", "Luxembourg",
+               "Malta", "Montenegro",
+               "Netherlands", "New Zealand", "Norway",
+               "Poland", "Portugal", "Puerto Rico",
+               "Romania",
+               "Serbia", "Slovakia", "Slovenia", "Spain", "Sweden", "Switzerland",
+               "Macedonia",
+               "Turkey",
+               "United Kingdom", "United States"
+)
+
+MAF <- c("Algeria", "Angola",
+         "Bahrain", "Benin", "Botswana", "Burkina Faso", "Burundi",
+         "Cameroon", "Cape Verde", "Central African Republic", "Chad", "Comoros", "Congo-Brazzaville", "Cote dIvoire",
+         "Congo-Kinshasa", "Djibouti",
+         "Egypt", "Equatorial Guinea", "Eritrea", "Ethiopia",
+         "Gabon", "Gambia, The", "Ghana", "Guinea", "Guinea-Bissau",
+         "Iran", "Iraq", "Israel",
+         "Jordan",
+         "Kenya", "Kuwait",
+         "Lebanon", "Lesotho", "Liberia", "Libya",
+         "Madagascar", "Malawi", "Mali", "Mauritania", "Mauritius", "Morocco", "Mozambique",
+         "Namibia", "Niger", "Nigeria",
+         "Palestinian Territories", "Oman",
+         "Qatar",
+         "Rwanda", "Reunion",
+         "Saudi Arabia", "Senegal", "Sierra Leone", "Somalia", "South Africa", "South Sudan", "Sudan", "Swaziland", "Syria",
+         "Togo", "Tunisia",
+         "Uganda", "United Arab Emirates", "Tanzania", 
+         "Western Sahara",
+         "Yemen",
+         "Zambia",
+         "Zimbabwe"
+)
+
+LAM <- c("Argentina", "Aruba",
+         "The Bahamas", "Barbados", "Belize", "Bolivia", "Brazil",
+         "Chile", "Colombia", "Costa Rica", "Cuba",
+         "Dominican Republic",
+         "Ecuador", "El Salvador",
+         "French Guiana",
+         "Grenada", "Guadeloupe", "Guatemala", "Guyana",
+         "Haiti", "Honduras",
+         "Jamaica",
+         "Martinique", "Mexico",
+         "Nicaragua",
+         "Panama", "Paraguay", "Peru",
+         "Suriname",
+         "Trinidad and Tobago",
+         "U.S. Virgin Islands",
+         "Uruguay",
+         "Venezuela"
+)
+
+ASIA <- c("Afghanistan",
+          "Bangladesh", "Bhutan", "Brunei",
+          "Cambodia", "China",
+          "North Korea",
+          "Fiji", "French Polynesia",
+          "Hong Kong",
+          "India", "Indonesia",
+          "Laos",
+          "Malaysia", "Maldives", "Micronesia", "Mongolia", "Myanmar",
+          "Nepal", "New Caledonia",
+          "Pakistan", "Papua New Guinea", "Philippines",
+          "South Korea",
+          "Samoa", "Singapore", "Solomon Islands", "Sri Lanka",
+          "Taiwan", "Thailand", "Timor-Leste",
+          "Vanuatu", "Vietnam"
+)
+
+REF <- c("Armenia", "Azerbaijan",
+         "Belarus",
+         "Georgia",
+         "Kazakhstan", "Kyrgyzstan",
+         "Moldova", "Russia",
+         "Tajikistan", "Turkmenistan",
+         "Ukraine", "Uzbekistan"
+)
+
+
+# Read actual generation data from GER
+ger <- read.csv("data/global_electricity_review_2020_v2.csv", header = T) %>%
+  filter(!Country %in% c("Rest of World", "World", "EU")) %>%
+  mutate(Region_ipcc = ifelse(Country %in% OECD90_EU, "OECD90_EU", 
+                              ifelse(Country %in% MAF, "MAF",
+                                     ifelse(Country %in% LAM, "LAM",
+                                            ifelse(Country %in% ASIA, "ASIA",
+                                                   ifelse(Country %in% REF, "REF", "ROW")))))) %>%
+  mutate(Type2 = ifelse(Type %in% "Coal", "Coal", 
+                        ifelse(Type %in% "Gas", "Gas", 
+                               ifelse(Type %in% c("Solar", "Wind", "Hydro"), "Renewables", "Other"))))
+
 # ==== Clean data ====
 
 # Exclude reference scenarios, and scenarios that don't account for carbon sequestration (Shell World Energy) or bioenergy (C-ROADS)
@@ -60,5 +166,5 @@ runs <- mutate(runs, SecondaryEnergy.Electricity.Fossil2 = SecondaryEnergy.Elect
 # ==== Write clean data ====
 
 write.csv(runs, file="data/runs_clean.csv", row.names=F)
-
+write.csv(ger, file="data/ger_ipcc.csv", row.names=F)
 
