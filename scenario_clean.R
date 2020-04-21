@@ -125,7 +125,8 @@ ger <- read.csv("data/global_electricity_review_2020_v2.csv", header = T) %>%
                                                    ifelse(Country %in% REF, "REF", "ROW")))))) %>%
   mutate(Type2 = ifelse(Type %in% "Coal", "Coal", 
                         ifelse(Type %in% "Gas", "Gas", 
-                               ifelse(Type %in% c("Solar", "Wind", "Hydro"), "Renewables", "Other"))))
+                               ifelse(Type %in% c("Solar", "Wind", "Hydro"), "Renewables",
+                                      ifelse(Type %in% "Nuclear", "Nuclear", "Other")))))
 
 # ==== Clean data ====
 

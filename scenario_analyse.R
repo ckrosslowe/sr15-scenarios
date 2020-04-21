@@ -3,6 +3,8 @@ library(tidyverse)
 library(readxl)
 library(viridis)
 library(cowplot)
+library(plotly)
+
 
 # ggplot theme
 theme_set(
@@ -18,7 +20,7 @@ meta <- read_excel("data/sr15_metadata_indicators_r2.0.xlsx", sheet="meta") %>%
   mutate(mod_scen = str_c(model, scenario, sep=" | "))
 
 # Read model data
-runs <- read.csv("data/runs_clean.csv", header=T, stringsAsFactors = F)
+runs_clean <- read.csv("data/runs_clean.csv", header=T, stringsAsFactors = F)
 
 # Read actual generation data from GER (with IPCC region variable)
 ger <- read.csv("data/ger_ipcc.csv", header = T, stringsAsFactors = F) %>%
@@ -32,7 +34,7 @@ temp_cats <- c("1.5C low overshoot", "Below 1.5C", "1.5C high overshoot", "Lower
 
 temp_ms <- meta$mod_scen[meta$category %in% temp_cats]
 # Select runs that meet temp criteria
-runs <- runs %>% filter(mod_scen %in% temp_ms)
+runs <- runs_clean %>% filter(mod_scen %in% temp_ms)
 
 #t_lab <- "<1.5C"
 #t_folder <- "temp_1p5C"
@@ -58,8 +60,8 @@ keep_ms <- runs$mod_scen[runs$Year==2050 & runs$Region %in% "World" & runs$Carbo
 #reg <- "R5MAF"
 #reg_lab <- "MAF"
 
-#reg <- "R5ASIA"
-#reg_lab <- "ASIA"
+reg <- "R5ASIA"
+reg_lab <- "ASIA"
 
 #reg <- "R5LAM"
 #reg_lab <- "LAM"
@@ -70,8 +72,8 @@ keep_ms <- runs$mod_scen[runs$Year==2050 & runs$Region %in% "World" & runs$Carbo
 #reg <- "R5ROWO"
 #reg_lab <- "ROW"
 
-reg <- "World"
-reg_lab <- "World"
+#reg <- "World"
+#reg_lab <- "World"
 
 # --- FILTER runs
 runs <- filter(runs, mod_scen %in% keep_ms, Region %in% reg)
@@ -493,7 +495,16 @@ renew_sum <- runs %>%
   ungroup() %>%
   mutate(Type="Renew_scen")
 
-runs_summary <- bind_rows(coal_sum, coal_woCCS_sum, gas_woCCS_sum, renew_sum)
+nuc_sum <- runs %>%
+  filter(Year %in% c(2020, 2030, 2040, 2050)) %>%
+  group_by(Year) %>%
+  summarise(med = median(SecondaryEnergy.Electricity.Nuclear),
+            q25 = quantile(SecondaryEnergy.Electricity.Nuclear, 0.25),
+            q75 = quantile(SecondaryEnergy.Electricity.Nuclear, 0.75)) %>%
+  ungroup() %>%
+  mutate(Type="Nuclear_scen")
+
+runs_summary <- bind_rows(coal_sum, coal_woCCS_sum, gas_woCCS_sum, renew_sum, nuc_sum)
 
 if (reg_lab == "World") {
   ger_sum <- ger %>%
@@ -524,6 +535,9 @@ med_plot <- function(fuel_type, yr_max, ttl) {
   else if (fuel_type %in% "Renew") {
     scen_dat <- filter(runs, !is.na(SecondaryEnergy.Electricity.Renewables), Year<=yr_max) %>% rename(Value = SecondaryEnergy.Electricity.Renewables)
   }
+  else if (fuel_type %in% "Nuclear") {
+    scen_dat <- filter(runs, !is.na(SecondaryEnergy.Electricity.Nuclear), Year<=yr_max) %>% rename(Value = SecondaryEnergy.Electricity.Nuclear)
+  }
   else {
     stop("Invalid input to 'fuel_type' variable")
   }
@@ -538,6 +552,9 @@ med_plot <- function(fuel_type, yr_max, ttl) {
   else if (fuel_type %in% c("Renew")) {
     ger_ft <- "Renewables"
   }
+  else if (fuel_type %in% c("Nuclear")) {
+    ger_ft <- "Nuclear"
+  }
   else {
     stop("Invalid input to 'fuel_type' variable")
   }
@@ -548,18 +565,22 @@ med_plot <- function(fuel_type, yr_max, ttl) {
                      "Coal_woCCS_scen"="grey20",
                      "Coal_scen"="grey20",
                      "Renewables"="purple",
-                     "Renew_scen"="grey20")
+                     "Renew_scen"="grey20",
+                     "Nuclear_scen"="grey20",
+                     "Nuclear"="darkorange")
   med_fuel_labs <- c("Renewables"="Historic", 
                      "Renew_scen"="Scenarios",
                      "Coal"="Historic",
                      "Gas"="Historic",
+                     "Nuclear"="Historic",
                      "Coal_scen"="Scenarios",
                      "Coal_woCCS_scen"="Scenarios",
                      "Gas_woCCS_scen"="Scenarios",
-                     "Gas_scen"="Scenarios")
+                     "Gas_scen"="Scenarios",
+                     "Nuclear_scen"="Scenarios")
   
   ggplot(filter(runs_summary, Type %in% paste0(fuel_type,"_scen")), aes(x=Year, y=med, colour=Type)) +#, group=Type, colour=Type)) +
-    geom_errorbar(aes(ymin=q25, ymax=q75), width=2, size=1, colour="grey20") +
+    geom_errorbar(aes(ymin=q25, ymax=q75), width=1, size=1, colour="grey20") +
     geom_line(size=1) +
     geom_point(size=4, colour="grey10") +
     # individual scenarios?
@@ -573,7 +594,7 @@ med_plot <- function(fuel_type, yr_max, ttl) {
          title=paste("Total electricity from", ttl),
          subtitle=paste0(t_lab,", ",reg_lab),
          colour="") +
-    scale_x_continuous(breaks=c(2000, 2010, 2020, 2030, 2040, 2050), limits = c(2000, yr_max+5)) +
+    scale_x_continuous(breaks=c(2010, 2020, 2030, 2040, 2050), limits = c(2010, yr_max+2)) +
     scale_color_manual(values=med_fuel_cols, labels=med_fuel_labs)
 }
 
@@ -592,6 +613,11 @@ dev.off()
 png(file=paste0("plots/renew_sum_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=900,height=600,res=150,type='cairo')
 med_plot("Renew", 2050, "Solar + Wind + Hydro")
 dev.off()
+
+png(file=paste0("plots/nuclear_sum_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=900,height=600,res=150,type='cairo')
+med_plot("Nuclear", 2050, "Nuclear")
+dev.off()
+
 
 # ==== WRITE RESULTS ====
 
