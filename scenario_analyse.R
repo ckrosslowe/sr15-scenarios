@@ -4,13 +4,20 @@ library(readxl)
 library(viridis)
 library(cowplot)
 library(plotly)
-
+library(gganimate)
 
 # ggplot theme
 theme_set(
   theme_minimal() +
     theme(legend.position = "right")
 )
+
+# temp category colour scheme
+temp_cols <- c("Below 1.5C"="steelblue1",
+               "1.5C low overshoot"="seagreen1",
+               "1.5C high overshoot"="gold",
+               "Lower 2C"="darkorange",
+               "Higher 2C"="indianred2")
 
 # Variables explained here https://data.ene.iiasa.ac.at/iamc-1.5c-explorer/#/docs
 
@@ -29,8 +36,8 @@ ger <- read.csv("data/ger_ipcc.csv", header = T, stringsAsFactors = F) %>%
 # ==== Filter scenarios ====
 
 # --- Temperature
-#temp_cats <- c("1.5C low overshoot", "Below 1.5C")
-temp_cats <- c("1.5C low overshoot", "Below 1.5C", "1.5C high overshoot", "Lower 2C", "Higher 2C")
+temp_cats <- c("1.5C low overshoot", "Below 1.5C")
+#temp_cats <- c("1.5C low overshoot", "Below 1.5C", "1.5C high overshoot", "Lower 2C", "Higher 2C")
 
 temp_ms <- meta$mod_scen[meta$category %in% temp_cats]
 # Select runs that meet temp criteria
@@ -43,25 +50,25 @@ t_folder <- "temp_2C"
 
 # --- BECCS & Bioenergy - global
 # Global bioenergy use in 2050
-hist(runs$PrimaryEnergy.Biomass[runs$Year==2050 & runs$Region %in% "World"])
+#hist(runs$PrimaryEnergy.Biomass[runs$Year==2050 & runs$Region %in% "World"])
 bio_lim <- 100
 
 # Global BECCS use in 2050
-hist(runs$CarbonSequestration.CCS.Biomass[runs$Year==2050 & runs$Region %in% "World"], 12)
+#hist(runs$CarbonSequestration.CCS.Biomass[runs$Year==2050 & runs$Region %in% "World"], 12)
 beccs_lim <- 5000
 
 # Which models meet these criteria at a global level in 2050?
 keep_ms <- runs$mod_scen[runs$Year==2050 & runs$Region %in% "World" & runs$CarbonSequestration.CCS.Biomass<=beccs_lim & runs$PrimaryEnergy.Biomass<=bio_lim]
 
 # --- Region
-#reg <- "R5OECD90+EU"    # IPCC name
-#reg_lab <- "OECD90_EU"  # GER name and chart label 
+reg <- "R5OECD90+EU"    # IPCC name
+reg_lab <- "OECD90_EU"  # GER name and chart label 
 
 #reg <- "R5MAF"
 #reg_lab <- "MAF"
 
-reg <- "R5ASIA"
-reg_lab <- "ASIA"
+#reg <- "R5ASIA"
+#reg_lab <- "ASIA"
 
 #reg <- "R5LAM"
 #reg_lab <- "LAM"
@@ -618,7 +625,33 @@ png(file=paste0("plots/nuclear_sum_",str_replace(t_lab,"<",""),"_",reg_lab,".png
 med_plot("Nuclear", 2050, "Nuclear")
 dev.off()
 
+# ---- Evolution charts ----
 
+runs_anim <- filter(runs, Year %in% c(2020, 2030, 2040, 2050, 2060, 2070, 2080, 2090, 2100)) %>%
+  left_join(meta[c("mod_scen", "category")], by="mod_scen")
+
+# Line plot of nuclear vs renewables
+runs_anim %>% select(SecondaryEnergy.Electricity.Nuclear, SecondaryEnergy.Electricity.Renewables, Year, SecondaryEnergy.Electricity, mod_scen, category) %>%
+  ggplot(aes(x=100*SecondaryEnergy.Electricity.Nuclear/SecondaryEnergy.Electricity, y=100*SecondaryEnergy.Electricity.Renewables/SecondaryEnergy.Electricity, group=mod_scen)) +
+  #geom_line(size=1, colour="grey20") +
+  geom_point(aes(colour=category), size=3, alpha=0.7) +
+  labs(title = 'Year: {frame_time}', x = '% Nuclear', y = '% Renewables', colour='Warming category') +
+  scale_colour_manual(values=temp_cols) +
+  transition_time(Year) +
+  ease_aes('linear')
+anim_save("plots/evolution_nuc-vs-renew.gif")
+
+
+# Line plot of gas vs renewables
+runs_anim %>% select(SecondaryEnergy.Electricity.Gas, SecondaryEnergy.Electricity.Renewables, Year, SecondaryEnergy.Electricity, mod_scen, category) %>%
+  ggplot(aes(x=100*SecondaryEnergy.Electricity.Gas/SecondaryEnergy.Electricity, y=100*SecondaryEnergy.Electricity.Renewables/SecondaryEnergy.Electricity, group=mod_scen)) +
+  #geom_line(size=1, colour="grey20") +
+  geom_point(aes(colour=category), size=3, alpha=0.7) +
+  labs(title = 'Year: {frame_time}', x = '% Gas', y = '% Renewables', colour='Warming category') +
+  scale_colour_manual(values=temp_cols) +
+  transition_time(Year) +
+  ease_aes('linear')
+anim_save("plots/evolution_gas-vs-renew.gif")
 # ==== WRITE RESULTS ====
 
 write.csv(runs_summary, file=paste0("data/runs_summary_",reg_lab,"_",str_replace(t_lab,"<",""),".csv"), row.names=F)

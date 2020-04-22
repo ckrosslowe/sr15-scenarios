@@ -74,9 +74,7 @@ runs <- filter(runs, mod_scen %in% keep_ms, Region %in% reg)
 # --- REMOVE runs that don't include selected breakdowns
 if (!reg  %in% "World") runs <- filter(runs, !mod_scen %in% "MESSAGEix-GLOBIOM 1.0 | LowEnergyDemand")
 
-
-# ---- PARALLEL COORDINATES PLOT ----
-
+# Add temerature category
 runs_par <- filter(runs, Year==2050) %>%
   left_join(meta[c("mod_scen", "category")], by="mod_scen")
 #runs_par$category[1:2] <- "Test"
@@ -87,9 +85,20 @@ runs_par$cat_num[runs_par$category %in% "1.5C high overshoot"] <- 3
 runs_par$cat_num[runs_par$category %in% "Lower 2C"] <- 4 
 runs_par$cat_num[runs_par$category %in% "Higher 2C"] <- 5 
 
+runs_par <- runs_par %>% mutate(pc.Coal.woCCS = SecondaryEnergy.Electricity.Coal.woCCS/SecondaryEnergy.Electricity,
+                                pc.Gas.woCCS = SecondaryEnergy.Electricity.Gas.woCCS/SecondaryEnergy.Electricity,
+                                pc.Gas.wCCS = SecondaryEnergy.Electricity.Gas.wCCS/SecondaryEnergy.Electricity,
+                                pc.Renewables = SecondaryEnergy.Electricity.Renewables/SecondaryEnergy.Electricity,
+                                pc.Biomass = SecondaryEnergy.Electricity.Biomass/SecondaryEnergy.Electricity,
+                                pc.Nuclear = SecondaryEnergy.Electricity.Nuclear/SecondaryEnergy.Electricity
+                                #pc.Coal.woCCS = SecondaryEnergy.Electricity.Coal.woCCS/SecondaryEnergy.Electricity,
+)
 
 
-fig <- runs_par %>%
+# ---- PARALLEL COORDINATES PLOT - EJ ----
+
+
+fig1 <- runs_par %>%
   plot_ly(width = 1000, height = 600) %>% 
   add_trace(type = 'parcoords',
                          line = list(color = ~cat_num,
@@ -129,11 +138,59 @@ fig <- runs_par %>%
   layout(margin = list(l=150, r=50, b=50, t=10),
          font = list(size=15))
 
-fig
+fig1
 
+# ---- PARALLEL COORDINATES PLOT - % ----
+
+
+fig2 <- runs_par %>%
+  plot_ly(width = 1000, height = 600) %>% 
+  add_trace(type = 'parcoords',
+            line = list(color = ~cat_num,
+                        colorscale = 'viridis',
+                        showscale = F
+                        #reversescale = FALSE,
+                        #cmin = 1,
+                        #cmax = 2
+            ),
+            dimensions = list(
+              list(range = c(1,5),
+                   tickvals = c(1,2,3,4,5),
+                   ticktext = c("Below 1.5C", "1.5C low overshoot", "1.5C high overshoot", "Lower 2C", "Higher 2C"),
+                   constraintrange = c(1.5,2.5),
+                   visible = T,
+                   label = 'Warming', 
+                   values = ~cat_num),
+              #list(range = c(~min(SecondaryEnergy.Electricity),~max(SecondaryEnergy.Electricity)),
+              #     #constraintrange = c(100000,150000),
+              #     label = 'Consumption', values = ~SecondaryEnergy.Electricity),
+              list(range = c(~min(pc.Coal.woCCS),~max(pc.Coal.woCCS)),
+                   #visible = TRUE,
+                   label = '% Coal', 
+                   values = ~pc.Coal.woCCS),
+              list(range = c(~min(pc.Gas.woCCS),~max(pc.Gas.woCCS)),
+                   #visible = TRUE, #activates slider
+                   label = '% Gas', 
+                   values = ~pc.Gas.woCCS),
+              list(range = c(~min(pc.Nuclear),~max(pc.Nuclear)),
+                   label = '% Nuclear', values = ~pc.Nuclear),
+              list(range = c(~min(pc.Renewables),~max(pc.Renewables)),
+                   label = '% Renewables', values = ~pc.Renewables),
+              list(range = c(~min(pc.Biomass),~max(pc.Biomass)),
+                   label = '% Biomass (all)', values = ~pc.Biomass)
+            )
+  ) %>%
+  layout(margin = list(l=150, r=50, b=50, t=10),
+         font = list(size=15))
+
+fig2
+
+# ---- Upload to plotly ----
 
 #save to plotly and create API
 Sys.setenv("plotly_username"="ember")
 Sys.setenv("plotly_api_key"="lrXNfvv9FUMuTmp258WH")
-api_create(fig, filename = "SR15 power scenarios")
+api_create(fig1, filename = "SR15 power scenarios 1")
+api_create(fig2, filename = "SR15 power scenarios 2")
+
 
