@@ -1,7 +1,5 @@
 library(tidyverse)
 library(readxl)
-library(viridis)
-library(cowplot)
 
 # Variables explained here https://data.ene.iiasa.ac.at/iamc-1.5c-explorer/#/docs
 
@@ -10,6 +8,14 @@ library(cowplot)
 # Read model data
 models <- read.csv("data/iamc15_scenario_data_all_regions_r2.0.csv", header=T) %>%
   mutate(mod_scen = str_c(Model, Scenario, sep=" | "))
+
+# Throw away some variables
+models <- models %>% filter(!grepl("^Agricultural", Variable),
+                            !grepl("^AR5", Variable),
+                            !grepl("^Forcing", Variable),
+                            !grepl("^Water", Variable)
+)
+                            
 
 # Re-structure model data
 runs <- models %>%
@@ -117,7 +123,8 @@ REF <- c("Armenia", "Azerbaijan",
 
 # Read actual generation data from GER
 ger <- read.csv("data/global_electricity_review_2020_v2.csv", header = T) %>%
-  filter(!Country %in% c("Rest of World", "World", "EU")) %>%
+  filter(!Country %in% c("Rest of World", "World", "EU"),
+         !Type %in% c("Production", "Demand", "Net imports")) %>%
   mutate(Region_ipcc = ifelse(Country %in% OECD90_EU, "OECD90_EU", 
                               ifelse(Country %in% MAF, "MAF",
                                      ifelse(Country %in% LAM, "LAM",
@@ -128,11 +135,14 @@ ger <- read.csv("data/global_electricity_review_2020_v2.csv", header = T) %>%
                                ifelse(Type %in% c("Solar", "Wind", "Hydro"), "Renewables",
                                       ifelse(Type %in% "Nuclear", "Nuclear", "Other")))))
 
+
 # ==== Clean data ====
 
 # Exclude reference scenarios, and scenarios that don't account for carbon sequestration (Shell World Energy) or bioenergy (C-ROADS)
 mod_exclude <- c("Reference", "C-ROADS-5.005", "Shell World Energy Model 2018")
 runs <- filter(runs, !Model %in% mod_exclude)
+
+# Throw away some variables
 
 # For all remaining runs...
 ms <- unique(runs$mod_scen)
@@ -157,12 +167,21 @@ for (i in seq(1,n_ms)) {
 } 
 
 # Create Renewables variable = Solar + Wind + Hydro
-runs <- mutate(runs, SecondaryEnergy.Electricity.Renewables = SecondaryEnergy.Electricity.Hydro + SecondaryEnergy.Electricity.Solar + SecondaryEnergy.Electricity.Wind + SecondaryEnergy.Electricity.Ocean + SecondaryEnergy.Electricity.Geothermal)
 # Create Fossil, Fossil CCS, and Fossil woCCS variables
-runs <- mutate(runs, SecondaryEnergy.Electricity.Fossil.wCCS = SecondaryEnergy.Electricity.Coal.wCCS + SecondaryEnergy.Electricity.Gas.wCCS + SecondaryEnergy.Electricity.Oil.wCCS)
-runs <- mutate(runs, SecondaryEnergy.Electricity.Fossil.woCCS = SecondaryEnergy.Electricity.Coal.woCCS + SecondaryEnergy.Electricity.Gas.woCCS + SecondaryEnergy.Electricity.Oil.woCCS)
-runs <- mutate(runs, SecondaryEnergy.Electricity.Fossil2 = SecondaryEnergy.Electricity.Coal + SecondaryEnergy.Electricity.Gas + SecondaryEnergy.Electricity.Oil)
+runs <- runs %>% mutate(SecondaryEnergy.Electricity.Renewables = SecondaryEnergy.Electricity.Hydro + SecondaryEnergy.Electricity.Solar + SecondaryEnergy.Electricity.Wind + SecondaryEnergy.Electricity.Ocean + SecondaryEnergy.Electricity.Geothermal,
+                        SecondaryEnergy.Electricity.Fossil.wCCS = SecondaryEnergy.Electricity.Coal.wCCS + SecondaryEnergy.Electricity.Gas.wCCS + SecondaryEnergy.Electricity.Oil.wCCS,
+                        SecondaryEnergy.Electricity.Fossil.woCCS = SecondaryEnergy.Electricity.Coal.woCCS + SecondaryEnergy.Electricity.Gas.woCCS + SecondaryEnergy.Electricity.Oil.woCCS,
+                        SecondaryEnergy.Electricity.Fossil2 = SecondaryEnergy.Electricity.Coal + SecondaryEnergy.Electricity.Gas + SecondaryEnergy.Electricity.Oil
+)
 
+runs <- runs %>% mutate(pc.Renewables = 100*SecondaryEnergy.Electricity.Renewables/SecondaryEnergy.Electricity,
+                        pc.Fossil = 100*SecondaryEnergy.Electricity.Fossil2/SecondaryEnergy.Electricity,
+                        pc.Nuclear = 100*SecondaryEnergy.Electricity.Nuclear/SecondaryEnergy.Electricity,
+                        pc.Biomass = 100*SecondaryEnergy.Electricity.Biomass/SecondaryEnergy.Electricity,
+                        pc.Gas = 100*SecondaryEnergy.Electricity.Gas/SecondaryEnergy.Electricity,
+                        pc.Coal = 100*SecondaryEnergy.Electricity.Coal/SecondaryEnergy.Electricity,
+                        pc.Gas.woCCS = 100*SecondaryEnergy.Electricity.Gas.woCCS/SecondaryEnergy.Electricity
+)
 
 # ==== Write clean data ====
 

@@ -33,20 +33,41 @@ runs_clean <- read.csv("data/runs_clean.csv", header=T, stringsAsFactors = F)
 ger <- read.csv("data/ger_ipcc.csv", header = T, stringsAsFactors = F) %>%
   select(-Source)
 
+ger_pc_regions <- ger %>% filter(Year > 2010) %>%
+  group_by(Region_ipcc, Type2, Year) %>%
+  summarise(Production = sum(Value_TWh, na.rm=T)) %>%
+  #ungroup() %>%
+  pivot_wider(id_cols=c("Year", "Production", "Region_ipcc", "Type2"), names_from=Type2, values_from=Production, names_repair="unique") %>%
+  mutate(Total=Coal+Gas+Nuclear+Renewables+Other) %>%
+  mutate(pc.Coal=100*Coal/Total,
+         pc.Gas=100*Gas/Total,
+         pc.Renewables=100*Renewables/Total,
+         pc.Nuclear=100*Nuclear/Total)
+ger_pc_sum_world <- ger %>% filter(Year > 2010) %>%
+  group_by(Type2, Year) %>%
+  summarise(Production = sum(Value_TWh, na.rm=T)) %>%
+  #ungroup() %>%
+  pivot_wider(id_cols=c("Year", "Production", "Type2"), names_from=Type2, values_from=Production, names_repair="unique") %>%
+  mutate(Total=Coal+Gas+Nuclear+Renewables+Other,
+         Region_ipcc = "World") %>%
+  mutate(pc.Coal=100*Coal/Total,
+         pc.Gas=100*Gas/Total,
+         pc.Renewables=100*Renewables/Total,
+         pc.Nuclear=100*Nuclear/Total)
+ger_pc_sum <- bind_rows(ger_pc_regions, ger_pc_sum_world)
+
 # ==== Filter scenarios ====
 
 # --- Temperature
-temp_cats <- c("1.5C low overshoot", "Below 1.5C")
-#temp_cats <- c("1.5C low overshoot", "Below 1.5C", "1.5C high overshoot", "Lower 2C", "Higher 2C")
+#temp_cats <- c("1.5C low overshoot", "Below 1.5C")
+temp_cats <- c("1.5C low overshoot", "Below 1.5C", "1.5C high overshoot", "Lower 2C", "Higher 2C")
 
 temp_ms <- meta$mod_scen[meta$category %in% temp_cats]
 # Select runs that meet temp criteria
 runs <- runs_clean %>% filter(mod_scen %in% temp_ms)
 
 #t_lab <- "<1.5C"
-#t_folder <- "temp_1p5C"
 t_lab <- "<2C"
-t_folder <- "temp_2C"
 
 # --- BECCS & Bioenergy - global
 # Global bioenergy use in 2050
@@ -61,8 +82,8 @@ beccs_lim <- 5000
 keep_ms <- runs$mod_scen[runs$Year==2050 & runs$Region %in% "World" & runs$CarbonSequestration.CCS.Biomass<=beccs_lim & runs$PrimaryEnergy.Biomass<=bio_lim]
 
 # --- Region
-reg <- "R5OECD90+EU"    # IPCC name
-reg_lab <- "OECD90_EU"  # GER name and chart label 
+#reg <- "R5OECD90+EU"    # IPCC name
+#reg_lab <- "OECD90_EU"  # GER name and chart label 
 
 #reg <- "R5MAF"
 #reg_lab <- "MAF"
@@ -79,14 +100,29 @@ reg_lab <- "OECD90_EU"  # GER name and chart label
 #reg <- "R5ROWO"
 #reg_lab <- "ROW"
 
-#reg <- "World"
-#reg_lab <- "World"
+reg <- "World"
+reg_lab <- "World"
 
 # --- FILTER runs
 runs <- filter(runs, mod_scen %in% keep_ms, Region %in% reg)
 
 # --- REMOVE runs that don't include selected breakdowns
 if (!reg  %in% "World") runs <- filter(runs, !mod_scen %in% "MESSAGEix-GLOBIOM 1.0 | LowEnergyDemand")
+
+######### STATS ############
+
+# Median elec shares by year
+med_share <- runs %>% select(Year, pc.Renewables, pc.Fossil) %>%
+  filter(Year %in% c(2020, 2030, 2050, 2100)) %>%
+  group_by(Year) %>%
+  summarise(Share_renew = median(pc.Renewables, na.rm=T),
+            q25_renew = quantile(pc.Renewables, 0.25),
+            q75_renew = quantile(pc.Renewables, 0.75),
+            Share_fossil = median(pc.Fossil, na.rm=T),
+            q25_fossil = quantile(pc.Fossil, 0.25),
+            q75_fossil = quantile(pc.Fossil, 0.75)
+            )
+med_share
 
 ######### PLOTS ############
 
@@ -465,6 +501,7 @@ test_yr <- 2050
 table(runs$mod_scen[runs$Year==test_yr], useNA="always", is.na(runs$FinalEnergy[runs$Year==test_yr]))
 # all 1.5C scenarios at World level have 2020, 2030, and 2050!
 
+# ---- TOTAL ELECTRICITY ----
 coal_sum <- runs %>%
   filter(Year %in% c(2020, 2030, 2040, 2050)) %>%
   group_by(Year) %>%
@@ -625,6 +662,135 @@ png(file=paste0("plots/nuclear_sum_",str_replace(t_lab,"<",""),"_",reg_lab,".png
 med_plot("Nuclear", 2050, "Nuclear")
 dev.off()
 
+
+# ---- SHARE OF ELECTRICITY ----
+coal_pc_sum <- runs %>%
+  filter(Year %in% c(2020, 2030, 2040, 2050)) %>%
+  group_by(Year) %>%
+  summarise(med = median(pc.Coal),
+            q25 = quantile(pc.Coal, 0.25),
+            q75 = quantile(pc.Coal, 0.75)) %>%
+  ungroup() %>%
+  mutate(Type="Coal_share")
+
+gas_woCCS_pc_sum <- runs %>%
+  filter(Year %in% c(2020, 2030, 2040, 2050)) %>%
+  group_by(Year) %>%
+  summarise(med = median(pc.Gas.woCCS),
+            q25 = quantile(pc.Gas.woCCS, 0.25),
+            q75 = quantile(pc.Gas.woCCS, 0.75)) %>%
+  ungroup() %>%
+  mutate(Type="Gas_woCCS_share")
+
+fossil_pc_sum <- runs %>%
+  filter(Year %in% c(2020, 2030, 2040, 2050)) %>%
+  group_by(Year) %>%
+  summarise(med = median(pc.Fossil),
+            q25 = quantile(pc.Fossil, 0.25),
+            q75 = quantile(pc.Fossil, 0.75)
+  ) %>%
+  ungroup() %>%
+  mutate(Type="Fossil_share")
+
+renew_pc_sum <- runs %>%
+  filter(Year %in% c(2020, 2030, 2040, 2050)) %>%
+  group_by(Year) %>%
+  summarise(med = median(pc.Renewables),
+            q25 = quantile(pc.Renewables, 0.25),
+            q75 = quantile(pc.Renewables, 0.75)) %>%
+  ungroup() %>%
+  mutate(Type="Renewables_share")
+
+nuc_pc_sum <- runs %>%
+  filter(Year %in% c(2020, 2030, 2040, 2050)) %>%
+  group_by(Year) %>%
+  summarise(med = median(pc.Nuclear),
+            q25 = quantile(pc.Nuclear, 0.25),
+            q75 = quantile(pc.Nuclear, 0.75)) %>%
+  ungroup() %>%
+  mutate(Type="Nuclear_share")
+
+runs_pc_summary <- bind_rows(coal_pc_sum, gas_woCCS_pc_sum, fossil_pc_sum, renew_pc_sum, nuc_pc_sum)
+
+med_pc_plot <- function(fuel_type, yr_max) {
+  
+  if (fuel_type %in% "Coal") {
+    scen_pc <- runs %>% select(mod_scen, Year, pc.Coal) %>% filter(!is.na(pc.Coal), Year<=yr_max) %>% rename(pc = pc.Coal)
+    ger_pc_sum <- ger_pc_sum %>% select(Year, Region_ipcc, pc.Coal) %>% rename(pc = pc.Coal) %>% mutate(col_var="Coal")
+  }
+  else if (fuel_type %in% "Gas_woCCS") {
+    scen_pc <- runs %>% select(mod_scen, Year, pc.Gas.woCCS) %>% filter(!is.na(pc.Gas.woCCS), Year<=yr_max) %>% rename(pc = pc.Gas.woCCS)
+    ger_pc_sum <- ger_pc_sum %>% select(Year, Region_ipcc, pc.Gas) %>% rename(pc = pc.Gas) %>% mutate(col_var="Gas")
+  }
+  else if (fuel_type %in% "Renewables") {
+    scen_pc <- runs %>% select(mod_scen, Year, pc.Renewables) %>% filter(!is.na(pc.Renewables), Year<=yr_max) %>% rename(pc = pc.Renewables)
+    ger_pc_sum <- ger_pc_sum %>% select(Year, Region_ipcc, pc.Renewables) %>% rename(pc = pc.Renewables) %>% mutate(col_var="Renewables")
+  }
+  else if (fuel_type %in% "Nuclear") {
+    scen_pc <- runs %>% select(mod_scen, Year, pc.Nuclear) %>% filter(!is.na(pc.Nuclear), Year<=yr_max) %>% rename(pc = pc.Nuclear)
+    ger_pc_sum <- ger_pc_sum %>% select(Year, Region_ipcc, pc.Nuclear) %>% rename(pc = pc.Nuclear) %>% mutate(col_var="Nuclear")
+  }
+  else {
+    stop("Invalid input to 'fuel_type' variable")
+  }
+  
+  med_pc_fuel_cols <- c("Gas"="blue", 
+                     "Coal"="red", 
+                     "Gas_woCCS_share"="grey20",
+                     "Coal_woCCS_share"="grey20",
+                     "Coal_share"="grey20",
+                     "Renewables"="purple",
+                     "Renewables_share"="grey20",
+                     "Nuclear_share"="grey20",
+                     "Nuclear"="darkorange")
+  med_pc_fuel_labs <- c("Renewables"="Historic", 
+                     "Renewables_share"="Scenarios",
+                     "Coal"="Historic",
+                     "Gas"="Historic",
+                     "Nuclear"="Historic",
+                     "Coal_share"="Scenarios",
+                     "Coal_woCCS_share"="Scenarios",
+                     "Gas_woCCS_share"="Scenarios",
+                     "Gas_share"="Scenarios",
+                     "Nuclear_share"="Scenarios")
+  
+  ggplot(filter(runs_pc_summary, Type %in% paste0(fuel_type,"_share")), aes(x=Year, y=med, colour=Type)) + #, group=Type, colour=Type)) +
+    geom_errorbar(aes(ymin=q25, ymax=q75), width=1, size=1, colour="grey20") +
+    geom_line(size=1) +
+    geom_point(size=4, colour="grey10") +
+    # individual scenarios?
+    geom_line(data=scen_pc, 
+              aes(x=Year, y=pc, group=mod_scen), 
+              size=0.5, alpha=0.3, colour="grey20") +
+    geom_line(data=filter(ger_pc_sum, Region_ipcc %in% reg_lab), 
+              aes(x=Year, y=pc, colour=col_var), size=2) +
+    labs(x="",
+         y="% of electricity generation",
+         title=paste("Share of electricity from", fuel_type),
+         subtitle=paste0(t_lab,", ",reg_lab),
+         colour="") +
+    scale_x_continuous(breaks=c(2010, 2020, 2030, 2040, 2050), limits = c(2010, yr_max+2)) +
+    scale_color_manual(values=med_pc_fuel_cols, labels=med_pc_fuel_labs)
+}
+
+
+png(file=paste0("plots/renewables_sum_pc_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=900,height=600,res=150,type='cairo')
+med_pc_plot("Renewables", 2050)
+dev.off()
+
+png(file=paste0("plots/coal_sum_pc_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=900,height=600,res=150,type='cairo')
+med_pc_plot("Coal", 2050)
+dev.off()
+
+png(file=paste0("plots/gas_woCCS_sum_pc_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=900,height=600,res=150,type='cairo')
+med_pc_plot("Gas_woCCS", 2050)
+dev.off()
+
+png(file=paste0("plots/nuclear_sum_pc_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=900,height=600,res=150,type='cairo')
+med_pc_plot("Nuclear", 2050)
+dev.off()
+
+
 # ---- Evolution charts ----
 
 runs_anim <- filter(runs, Year %in% c(2020, 2030, 2040, 2050, 2060, 2070, 2080, 2090, 2100)) %>%
@@ -652,6 +818,12 @@ runs_anim %>% select(SecondaryEnergy.Electricity.Gas, SecondaryEnergy.Electricit
   transition_time(Year) +
   ease_aes('linear')
 anim_save("plots/evolution_gas-vs-renew.gif")
+# ---- changes to 2030 ----
+# Data structure needed:
+# Year: 2020-2050
+# Change: (Year-2020)
+# Fuel: 
+
 # ==== WRITE RESULTS ====
 
 write.csv(runs_summary, file=paste0("data/runs_summary_",reg_lab,"_",str_replace(t_lab,"<",""),".csv"), row.names=F)
