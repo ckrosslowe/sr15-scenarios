@@ -1,0 +1,591 @@
+"Variable","n_runs"
+"Agricultural Demand",138
+"Agricultural Demand|Crops",110
+"Agricultural Demand|Crops|Energy",34
+"Agricultural Demand|Crops|Feed",73
+"Agricultural Demand|Crops|Food",73
+"Agricultural Demand|Crops|Other",73
+"Agricultural Demand|Livestock",111
+"Agricultural Demand|Livestock|Food",73
+"Agricultural Demand|Livestock|Other",73
+"Agricultural Production",138
+"Agricultural Production|Energy",1
+"Agricultural Production|Energy|Crops",136
+"Agricultural Production|Energy|Residues",8
+"Agricultural Production|Non-Energy",9
+"Agricultural Production|Non-Energy|Crops",136
+"Agricultural Production|Non-Energy|Livestock",116
+"AR5 climate diagnostics|Concentration|CO2|FAIR|MED",410
+"AR5 climate diagnostics|Concentration|CO2|MAGICC6|MED",411
+"AR5 climate diagnostics|Forcing|Aerosol|Direct|MAGICC6|MED",411
+"AR5 climate diagnostics|Forcing|Aerosol|MAGICC6|MED",411
+"AR5 climate diagnostics|Forcing|Aerosol|Total|FAIR|MED",410
+"AR5 climate diagnostics|Forcing|Aerosol|Total|MAGICC6|MED",411
+"AR5 climate diagnostics|Forcing|CH4|FAIR|MED",410
+"AR5 climate diagnostics|Forcing|CH4|MAGICC6|MED",411
+"AR5 climate diagnostics|Forcing|CO2|FAIR|MED",410
+"AR5 climate diagnostics|Forcing|CO2|MAGICC6|MED",411
+"AR5 climate diagnostics|Forcing|F-Gases|MAGICC6|MED",411
+"AR5 climate diagnostics|Forcing|FAIR|MED",410
+"AR5 climate diagnostics|Forcing|Kyoto Gases|MAGICC6|MED",411
+"AR5 climate diagnostics|Forcing|MAGICC6|MED",411
+"AR5 climate diagnostics|Forcing|Montreal Protocol (orig.) gases|MAGICC6|MED",411
+"AR5 climate diagnostics|Forcing|N2O|FAIR|MED",410
+"AR5 climate diagnostics|Forcing|N2O|MAGICC6|MED",411
+"AR5 climate diagnostics|Forcing|OtherGHGs|FAIR|MED",410
+"AR5 climate diagnostics|Forcing|Tropospheric Ozone|FAIR|MED",410
+"AR5 climate diagnostics|Forcing|Tropospheric Ozone|MAGICC6|MED",411
+"AR5 climate diagnostics|Temperature|Exceedance Probability|1.0 °C|FAIR",410
+"AR5 climate diagnostics|Temperature|Exceedance Probability|1.0 °C|MAGICC6",411
+"AR5 climate diagnostics|Temperature|Exceedance Probability|1.5 °C|FAIR",410
+"AR5 climate diagnostics|Temperature|Exceedance Probability|1.5 °C|MAGICC6",411
+"AR5 climate diagnostics|Temperature|Exceedance Probability|2.0 °C|FAIR",410
+"AR5 climate diagnostics|Temperature|Exceedance Probability|2.0 °C|MAGICC6",411
+"AR5 climate diagnostics|Temperature|Exceedance Probability|2.5 °C|FAIR",410
+"AR5 climate diagnostics|Temperature|Exceedance Probability|2.5 °C|MAGICC6",411
+"AR5 climate diagnostics|Temperature|Exceedance Probability|3.0 °C|FAIR",410
+"AR5 climate diagnostics|Temperature|Exceedance Probability|3.0 °C|MAGICC6",411
+"AR5 climate diagnostics|Temperature|Exceedance Probability|3.5 °C|FAIR",410
+"AR5 climate diagnostics|Temperature|Exceedance Probability|3.5 °C|MAGICC6",411
+"AR5 climate diagnostics|Temperature|Exceedance Probability|4.0 °C|FAIR",410
+"AR5 climate diagnostics|Temperature|Exceedance Probability|4.0 °C|MAGICC6",411
+"AR5 climate diagnostics|Temperature|Global Mean|FAIR|Expected value",410
+"AR5 climate diagnostics|Temperature|Global Mean|FAIR|Expected value|Non CO2",410
+"AR5 climate diagnostics|Temperature|Global Mean|FAIR|MED",410
+"AR5 climate diagnostics|Temperature|Global Mean|FAIR|MED|Non CO2",410
+"AR5 climate diagnostics|Temperature|Global Mean|FAIR|P5",410
+"AR5 climate diagnostics|Temperature|Global Mean|FAIR|P5|Non CO2",410
+"AR5 climate diagnostics|Temperature|Global Mean|FAIR|P66",410
+"AR5 climate diagnostics|Temperature|Global Mean|FAIR|P66|Non CO2",410
+"AR5 climate diagnostics|Temperature|Global Mean|FAIR|P90",410
+"AR5 climate diagnostics|Temperature|Global Mean|FAIR|P90|Non CO2",410
+"AR5 climate diagnostics|Temperature|Global Mean|FAIR|P95",410
+"AR5 climate diagnostics|Temperature|Global Mean|FAIR|P95|Non CO2",410
+"AR5 climate diagnostics|Temperature|Global Mean|MAGICC6|Expected value",411
+"AR5 climate diagnostics|Temperature|Global Mean|MAGICC6|Expected value|Non CO2",303
+"AR5 climate diagnostics|Temperature|Global Mean|MAGICC6|MED",411
+"AR5 climate diagnostics|Temperature|Global Mean|MAGICC6|P5",411
+"AR5 climate diagnostics|Temperature|Global Mean|MAGICC6|P66",411
+"AR5 climate diagnostics|Temperature|Global Mean|MAGICC6|P90",411
+"AR5 climate diagnostics|Temperature|Global Mean|MAGICC6|P95",411
+"Capacity|Electricity",242
+"Capacity|Electricity|Biomass",281
+"Capacity|Electricity|Coal",281
+"Capacity|Electricity|Gas",281
+"Capacity|Electricity|Geothermal",165
+"Capacity|Electricity|Hydro",272
+"Capacity|Electricity|Nuclear",287
+"Capacity|Electricity|Ocean",11
+"Capacity|Electricity|Oil",248
+"Capacity|Electricity|Other",99
+"Capacity|Electricity|Solar",269
+"Capacity|Electricity|Solar|CSP",115
+"Capacity|Electricity|Solar|PV",163
+"Capacity|Electricity|Wind",287
+"Capacity|Electricity|Wind|Offshore",69
+"Capacity|Electricity|Wind|Onshore",123
+"Capital Cost|Electricity|Biomass|w/ CCS",39
+"Capital Cost|Electricity|Biomass|w/o CCS",41
+"Capital Cost|Electricity|Coal|w/ CCS",39
+"Capital Cost|Electricity|Coal|w/o CCS",42
+"Capital Cost|Electricity|Gas|w/ CCS",39
+"Capital Cost|Electricity|Gas|w/o CCS",42
+"Capital Cost|Electricity|Geothermal",39
+"Capital Cost|Electricity|Hydro",42
+"Capital Cost|Electricity|Nuclear",42
+"Capital Cost|Electricity|Solar|CSP",36
+"Capital Cost|Electricity|Solar|PV",42
+"Capital Cost|Electricity|Wind|Offshore",36
+"Capital Cost|Electricity|Wind|Onshore",42
+"Capital Cost|Gases|Biomass|w/o CCS",32
+"Capital Cost|Gases|Coal|w/o CCS",32
+"Capital Cost|Hydrogen|Biomass|w/ CCS",33
+"Capital Cost|Hydrogen|Biomass|w/o CCS",33
+"Capital Cost|Hydrogen|Coal|w/ CCS",33
+"Capital Cost|Hydrogen|Coal|w/o CCS",33
+"Capital Cost|Hydrogen|Electricity",33
+"Capital Cost|Hydrogen|Gas|w/ CCS",33
+"Capital Cost|Hydrogen|Gas|w/o CCS",33
+"Capital Cost|Liquids|Biomass|w/ CCS",32
+"Capital Cost|Liquids|Biomass|w/o CCS",32
+"Capital Cost|Liquids|Coal|w/ CCS",32
+"Capital Cost|Liquids|Coal|w/o CCS",32
+"Capital Cost|Liquids|Oil",32
+"Carbon Sequestration|CCS",359
+"Carbon Sequestration|CCS|Biomass",359
+"Carbon Sequestration|CCS|Biomass|Energy",16
+"Carbon Sequestration|CCS|Biomass|Energy|Demand|Industry",69
+"Carbon Sequestration|CCS|Biomass|Energy|Supply",101
+"Carbon Sequestration|CCS|Biomass|Energy|Supply|Electricity",101
+"Carbon Sequestration|CCS|Biomass|Energy|Supply|Gases",52
+"Carbon Sequestration|CCS|Biomass|Energy|Supply|Hydrogen",80
+"Carbon Sequestration|CCS|Biomass|Energy|Supply|Liquids",75
+"Carbon Sequestration|CCS|Biomass|Energy|Supply|Other",26
+"Carbon Sequestration|CCS|Biomass|Industrial Processes",8
+"Carbon Sequestration|CCS|Fossil",313
+"Carbon Sequestration|CCS|Fossil|Energy",16
+"Carbon Sequestration|CCS|Fossil|Energy|Demand|Industry",80
+"Carbon Sequestration|CCS|Fossil|Energy|Supply",82
+"Carbon Sequestration|CCS|Fossil|Energy|Supply|Electricity",50
+"Carbon Sequestration|CCS|Fossil|Energy|Supply|Gases",26
+"Carbon Sequestration|CCS|Fossil|Energy|Supply|Hydrogen",38
+"Carbon Sequestration|CCS|Fossil|Energy|Supply|Liquids",50
+"Carbon Sequestration|CCS|Fossil|Energy|Supply|Other",26
+"Carbon Sequestration|CCS|Fossil|Industrial Processes",13
+"Carbon Sequestration|Direct Air Capture",15
+"Carbon Sequestration|Enhanced Weathering",12
+"Carbon Sequestration|Land Use",160
+"Carbon Sequestration|Land Use|Afforestation",74
+"Carbon Sequestration|Land Use|Biochar",6
+"Carbon Sequestration|Land Use|Soil Carbon Management",6
+"Concentration|CH4",150
+"Concentration|CO2",150
+"Concentration|N2O",150
+"Consumption",342
+"Cumulative Capacity|Electricity|Biomass",65
+"Cumulative Capacity|Electricity|Biomass|w/ CCS",68
+"Cumulative Capacity|Electricity|Biomass|w/o CCS",48
+"Cumulative Capacity|Electricity|Coal",76
+"Cumulative Capacity|Electricity|Coal|w/ CCS",68
+"Cumulative Capacity|Electricity|Coal|w/o CCS",81
+"Cumulative Capacity|Electricity|Gas",76
+"Cumulative Capacity|Electricity|Gas|w/ CCS",68
+"Cumulative Capacity|Electricity|Gas|w/o CCS",81
+"Cumulative Capacity|Electricity|Geothermal",9
+"Cumulative Capacity|Electricity|Hydro",49
+"Cumulative Capacity|Electricity|Nuclear",82
+"Cumulative Capacity|Electricity|Ocean",3
+"Cumulative Capacity|Electricity|Oil",44
+"Cumulative Capacity|Electricity|Other",7
+"Cumulative Capacity|Electricity|Solar",44
+"Cumulative Capacity|Electricity|Solar|CSP",43
+"Cumulative Capacity|Electricity|Solar|PV",76
+"Cumulative Capacity|Electricity|Wind",43
+"Cumulative Capacity|Electricity|Wind|Offshore",11
+"Cumulative Capacity|Electricity|Wind|Onshore",17
+"Diagnostics|MAGICC6|Harmonized Input|Emissions|BC",411
+"Diagnostics|MAGICC6|Harmonized Input|Emissions|C2F6",411
+"Diagnostics|MAGICC6|Harmonized Input|Emissions|C6F14",411
+"Diagnostics|MAGICC6|Harmonized Input|Emissions|CH4",411
+"Diagnostics|MAGICC6|Harmonized Input|Emissions|CO",411
+"Diagnostics|MAGICC6|Harmonized Input|Emissions|CO2|AFOLU",411
+"Diagnostics|MAGICC6|Harmonized Input|Emissions|CO2|Energy and Industrial Processes",411
+"Diagnostics|MAGICC6|Harmonized Input|Emissions|HFC|HFC125",411
+"Diagnostics|MAGICC6|Harmonized Input|Emissions|HFC|HFC134a",411
+"Diagnostics|MAGICC6|Harmonized Input|Emissions|HFC|HFC143a",411
+"Diagnostics|MAGICC6|Harmonized Input|Emissions|HFC|HFC227ea",411
+"Diagnostics|MAGICC6|Harmonized Input|Emissions|HFC|HFC23",411
+"Diagnostics|MAGICC6|Harmonized Input|Emissions|HFC|HFC245ca",310
+"Diagnostics|MAGICC6|Harmonized Input|Emissions|HFC|HFC32",411
+"Diagnostics|MAGICC6|Harmonized Input|Emissions|HFC|HFC43-10",411
+"Diagnostics|MAGICC6|Harmonized Input|Emissions|N2O",411
+"Diagnostics|MAGICC6|Harmonized Input|Emissions|NH3",411
+"Diagnostics|MAGICC6|Harmonized Input|Emissions|NOx",411
+"Diagnostics|MAGICC6|Harmonized Input|Emissions|OC",411
+"Diagnostics|MAGICC6|Harmonized Input|Emissions|PFC",411
+"Diagnostics|MAGICC6|Harmonized Input|Emissions|SF6",411
+"Diagnostics|MAGICC6|Harmonized Input|Emissions|Sulfur",411
+"Diagnostics|MAGICC6|Harmonized Input|Emissions|VOC",411
+"Discount rate|Buildings",1
+"Discount rate|Economy",4
+"Discount rate|Electricity",1
+"Discount rate|Energy Supply",1
+"Discount rate|Industry",1
+"Discount rate|Mobility",1
+"Discount rate|Social",1
+"Discount rate|Transport Infrastructure",1
+"Emissions|BC",389
+"Emissions|BC|AFOLU",80
+"Emissions|BC|Energy",80
+"Emissions|BC|Energy|Demand|Industry",80
+"Emissions|BC|Energy|Demand|Residential and Commercial",71
+"Emissions|BC|Energy|Demand|Transportation",80
+"Emissions|BC|Energy|Supply",80
+"Emissions|BC|Other",33
+"Emissions|CH4",412
+"Emissions|CH4|AFOLU",301
+"Emissions|CH4|Energy",234
+"Emissions|CH4|Energy|Demand|Industry",74
+"Emissions|CH4|Energy|Demand|Residential and Commercial",115
+"Emissions|CH4|Energy|Demand|Transportation",74
+"Emissions|CH4|Energy|Supply",138
+"Emissions|CH4|Other",42
+"Emissions|CO",353
+"Emissions|CO|AFOLU",80
+"Emissions|CO|Energy",80
+"Emissions|CO|Energy|Demand|Industry",72
+"Emissions|CO|Energy|Demand|Residential and Commercial",71
+"Emissions|CO|Energy|Demand|Transportation",80
+"Emissions|CO|Energy|Supply",80
+"Emissions|CO|Other",1
+"Emissions|CO2",414
+"Emissions|CO2|AFOLU",412
+"Emissions|CO2|Energy",125
+"Emissions|CO2|Energy and Industrial Processes",414
+"Emissions|CO2|Energy|Demand",356
+"Emissions|CO2|Energy|Demand|AFOFI",70
+"Emissions|CO2|Energy|Demand|Industry",316
+"Emissions|CO2|Energy|Demand|Other Sector",10
+"Emissions|CO2|Energy|Demand|Residential and Commercial",315
+"Emissions|CO2|Energy|Demand|Transportation",223
+"Emissions|CO2|Energy|Supply",389
+"Emissions|CO2|Energy|Supply|Electricity",347
+"Emissions|CO2|Energy|Supply|Gases",71
+"Emissions|CO2|Energy|Supply|Heat",69
+"Emissions|CO2|Energy|Supply|Liquids",80
+"Emissions|CO2|Energy|Supply|Other Sector",33
+"Emissions|CO2|Energy|Supply|Solids",71
+"Emissions|CO2|Industrial Processes",82
+"Emissions|CO2|Other",123
+"Emissions|F-Gases",368
+"Emissions|HFC",108
+"Emissions|HFC|HFC125",188
+"Emissions|HFC|HFC134a",188
+"Emissions|HFC|HFC143a",188
+"Emissions|HFC|HFC227ea",188
+"Emissions|HFC|HFC23",180
+"Emissions|HFC|HFC245fa",38
+"Emissions|HFC|HFC32",180
+"Emissions|HFC|HFC43-10",180
+"Emissions|Kyoto Gases",337
+"Emissions|Kyoto Gases (AR4-GWP100)",374
+"Emissions|Kyoto Gases (AR5-GWP100)",374
+"Emissions|Kyoto Gases (SAR-GWP100)",374
+"Emissions|N2O",411
+"Emissions|N2O|AFOLU",300
+"Emissions|N2O|Energy",114
+"Emissions|N2O|Other",74
+"Emissions|NH3",345
+"Emissions|NH3|AFOLU",80
+"Emissions|NH3|Energy",55
+"Emissions|NH3|Energy|Demand|Industry",55
+"Emissions|NH3|Energy|Demand|Residential and Commercial",54
+"Emissions|NH3|Energy|Demand|Transportation",55
+"Emissions|NH3|Energy|Supply",55
+"Emissions|NH3|Other",8
+"Emissions|NOx",363
+"Emissions|NOx|AFOLU",80
+"Emissions|NOx|Energy",80
+"Emissions|NOx|Energy|Demand|Industry",80
+"Emissions|NOx|Energy|Demand|Residential and Commercial",79
+"Emissions|NOx|Energy|Demand|Transportation",80
+"Emissions|NOx|Energy|Supply",80
+"Emissions|NOx|Other",33
+"Emissions|OC",363
+"Emissions|OC|AFOLU",80
+"Emissions|OC|Energy",80
+"Emissions|OC|Energy|Demand|Industry",80
+"Emissions|OC|Energy|Demand|Residential and Commercial",79
+"Emissions|OC|Energy|Demand|Transportation",80
+"Emissions|OC|Energy|Supply",80
+"Emissions|OC|Other",33
+"Emissions|PFC",180
+"Emissions|PFC|C2F6",9
+"Emissions|PFC|C6F14",9
+"Emissions|PFC|CF4",9
+"Emissions|SF6",191
+"Emissions|Sulfur",412
+"Emissions|Sulfur|AFOLU",80
+"Emissions|Sulfur|Energy",80
+"Emissions|Sulfur|Energy|Demand|Industry",80
+"Emissions|Sulfur|Energy|Demand|Residential and Commercial",79
+"Emissions|Sulfur|Energy|Demand|Transportation",80
+"Emissions|Sulfur|Energy|Supply",80
+"Emissions|Sulfur|Other",33
+"Emissions|VOC",345
+"Emissions|VOC|AFOLU",80
+"Emissions|VOC|Energy",80
+"Emissions|VOC|Energy|Demand|Industry",80
+"Emissions|VOC|Energy|Demand|Residential and Commercial",79
+"Emissions|VOC|Energy|Demand|Transportation",80
+"Emissions|VOC|Energy|Supply",80
+"Emissions|VOC|Other",33
+"Energy Service|Transportation|Freight",98
+"Energy Service|Transportation|Freight|Aviation",8
+"Energy Service|Transportation|Freight|Navigation",1
+"Energy Service|Transportation|Freight|Railways",9
+"Energy Service|Transportation|Freight|Road",10
+"Energy Service|Transportation|Passenger",98
+"Energy Service|Transportation|Passenger|Aviation",9
+"Energy Service|Transportation|Passenger|Railways",9
+"Energy Service|Transportation|Passenger|Road",9
+"Final Energy",409
+"Final Energy|Electricity",409
+"Final Energy|Fossil",1
+"Final Energy|Gases",408
+"Final Energy|Geothermal",77
+"Final Energy|Heat",373
+"Final Energy|Hydrogen",291
+"Final Energy|Industry",280
+"Final Energy|Industry|Electricity",205
+"Final Energy|Industry|Fossil",1
+"Final Energy|Industry|Gases",205
+"Final Energy|Industry|Geothermal",1
+"Final Energy|Industry|Heat",205
+"Final Energy|Industry|Hydrogen",144
+"Final Energy|Industry|Liquids",205
+"Final Energy|Industry|Other",60
+"Final Energy|Industry|Solar",1
+"Final Energy|Industry|Solids",194
+"Final Energy|Industry|Solids|Biomass",120
+"Final Energy|Industry|Solids|Coal",120
+"Final Energy|Liquids",404
+"Final Energy|Non-Energy Use",18
+"Final Energy|Non-Energy Use|Biomass",12
+"Final Energy|Non-Energy Use|Coal",37
+"Final Energy|Non-Energy Use|Fossil",1
+"Final Energy|Non-Energy Use|Gas",43
+"Final Energy|Non-Energy Use|Oil",43
+"Final Energy|Residential and Commercial",326
+"Final Energy|Residential and Commercial|Electricity",159
+"Final Energy|Residential and Commercial|Fossil",1
+"Final Energy|Residential and Commercial|Gases",159
+"Final Energy|Residential and Commercial|Geothermal",1
+"Final Energy|Residential and Commercial|Heat",205
+"Final Energy|Residential and Commercial|Hydrogen",107
+"Final Energy|Residential and Commercial|Liquids",159
+"Final Energy|Residential and Commercial|Other",41
+"Final Energy|Residential and Commercial|Solar",1
+"Final Energy|Residential and Commercial|Solids",148
+"Final Energy|Residential and Commercial|Solids|Biomass",93
+"Final Energy|Residential and Commercial|Solids|Coal",93
+"Final Energy|Solar",196
+"Final Energy|Solids",388
+"Final Energy|Solids|Biomass",408
+"Final Energy|Solids|Biomass|Traditional",305
+"Final Energy|Solids|Coal",408
+"Final Energy|Transportation",404
+"Final Energy|Transportation|Electricity",368
+"Final Energy|Transportation|Fossil",1
+"Final Energy|Transportation|Freight",84
+"Final Energy|Transportation|Gases",152
+"Final Energy|Transportation|Geothermal",1
+"Final Energy|Transportation|Heat",1
+"Final Energy|Transportation|Hydrogen",250
+"Final Energy|Transportation|Liquids",313
+"Final Energy|Transportation|Liquids|Biomass",318
+"Final Energy|Transportation|Liquids|Oil",225
+"Final Energy|Transportation|Solar",1
+"Final Energy|Transportation|Solids|Biomass",1
+"Final Energy|Transportation|Solids|Coal",1
+"Food Demand",240
+"Food Demand|Crops",204
+"Food Demand|Livestock",204
+"Food Energy Supply",73
+"Food Energy Supply|Livestock",32
+"Forcing",150
+"Forcing|Aerosol",114
+"Forcing|Aerosol|BC",79
+"Forcing|Aerosol|Black and Organic Carbon",14
+"Forcing|Aerosol|Cloud Indirect",46
+"Forcing|Aerosol|OC",79
+"Forcing|Aerosol|Other",79
+"Forcing|Aerosol|Sulfate Direct",79
+"Forcing|Albedo Change and Mineral Dust",57
+"Forcing|CH4",138
+"Forcing|CO2",138
+"Forcing|F-Gases",120
+"Forcing|Kyoto Gases",144
+"Forcing|Montreal Gases",63
+"Forcing|N2O",138
+"Forcing|Other",85
+"Forcing|Tropospheric Ozone",81
+"GDP|MER",285
+"GDP|PPP",393
+"Investment|Energy Efficiency",25
+"Investment|Energy Supply",207
+"Investment|Energy Supply|CO2 Transport and Storage",67
+"Investment|Energy Supply|Electricity",183
+"Investment|Energy Supply|Electricity|Biomass",48
+"Investment|Energy Supply|Electricity|Biomass|w/ CCS",69
+"Investment|Energy Supply|Electricity|Biomass|w/o CCS",71
+"Investment|Energy Supply|Electricity|Coal",48
+"Investment|Energy Supply|Electricity|Coal|w/ CCS",69
+"Investment|Energy Supply|Electricity|Coal|w/o CCS",71
+"Investment|Energy Supply|Electricity|Electricity Storage",37
+"Investment|Energy Supply|Electricity|Fossil",182
+"Investment|Energy Supply|Electricity|Gas",48
+"Investment|Energy Supply|Electricity|Gas|w/ CCS",69
+"Investment|Energy Supply|Electricity|Gas|w/o CCS",71
+"Investment|Energy Supply|Electricity|Geothermal",32
+"Investment|Energy Supply|Electricity|Hydro",72
+"Investment|Energy Supply|Electricity|Non-Biomass Renewables",71
+"Investment|Energy Supply|Electricity|Non-fossil",85
+"Investment|Energy Supply|Electricity|Nuclear",72
+"Investment|Energy Supply|Electricity|Ocean",1
+"Investment|Energy Supply|Electricity|Oil",48
+"Investment|Energy Supply|Electricity|Oil|w/ CCS",12
+"Investment|Energy Supply|Electricity|Oil|w/o CCS",71
+"Investment|Energy Supply|Electricity|Other",49
+"Investment|Energy Supply|Electricity|Solar",72
+"Investment|Energy Supply|Electricity|Transmission and Distribution",105
+"Investment|Energy Supply|Electricity|Wind",72
+"Investment|Energy Supply|Extraction|Coal",8
+"Investment|Energy Supply|Extraction|Fossil",101
+"Investment|Energy Supply|Extraction|Gas",8
+"Investment|Energy Supply|Extraction|Oil",8
+"Investment|Energy Supply|Heat",81
+"Investment|Energy Supply|Hydrogen",33
+"Investment|Energy Supply|Hydrogen|Fossil",57
+"Investment|Energy Supply|Hydrogen|Other",24
+"Investment|Energy Supply|Liquids",80
+"Investment|Energy Supply|Liquids|Biomass",48
+"Investment|Energy Supply|Liquids|Coal and Gas",34
+"Investment|Energy Supply|Liquids|Oil",48
+"Land Cover",231
+"Land Cover|Built-up Area",252
+"Land Cover|Cropland",312
+"Land Cover|Cropland|Cereals",73
+"Land Cover|Cropland|Energy Crops",262
+"Land Cover|Cropland|Irrigated",34
+"Land Cover|Forest",333
+"Land Cover|Forest|Afforestation and Reforestation",34
+"Land Cover|Forest|Managed",42
+"Land Cover|Forest|Natural Forest",73
+"Land Cover|Other Arable Land",89
+"Land Cover|Other Land",72
+"Land Cover|Other Natural Land",150
+"Land Cover|Pasture",312
+"Policy Cost|Additional Total Energy System Cost",12
+"Policy Cost|Area under MAC Curve",74
+"Policy Cost|Consumption Loss",142
+"Policy Cost|GDP Loss",142
+"Policy Cost|Other",32
+"Population",413
+"Population|Risk of Hunger",6
+"Population|Rural",3
+"Population|Urban",48
+"Population|Urban|Share",1
+"Price|Agriculture|Corn|Index",37
+"Price|Agriculture|Livestock|Index",49
+"Price|Agriculture|Non-Energy Crops and Livestock|Index",171
+"Price|Agriculture|Non-Energy Crops|Index",171
+"Price|Agriculture|Soybean|Index",37
+"Price|Agriculture|Wheat|Index",37
+"Price|Carbon",378
+"Price|Final Energy|Residential|Electricity",38
+"Price|Final Energy|Residential|Gases|Natural Gas",38
+"Price|Final Energy|Residential|Liquids|Biomass",38
+"Price|Final Energy|Residential|Liquids|Oil",38
+"Price|Final Energy|Residential|Solids|Biomass",32
+"Price|Final Energy|Residential|Solids|Coal",38
+"Price|Primary Energy|Biomass",73
+"Price|Primary Energy|Coal",139
+"Price|Primary Energy|Gas",139
+"Price|Primary Energy|Oil",139
+"Price|Secondary Energy|Electricity",135
+"Price|Secondary Energy|Gases|Natural Gas",61
+"Price|Secondary Energy|Hydrogen",42
+"Price|Secondary Energy|Liquids",48
+"Price|Secondary Energy|Liquids|Biomass",89
+"Price|Secondary Energy|Liquids|Oil",53
+"Price|Secondary Energy|Solids|Biomass",11
+"Price|Secondary Energy|Solids|Coal",53
+"Primary Energy",409
+"Primary Energy|Biomass",409
+"Primary Energy|Biomass|Electricity",137
+"Primary Energy|Biomass|Electricity|w/ CCS",128
+"Primary Energy|Biomass|Electricity|w/o CCS",136
+"Primary Energy|Biomass|Modern",192
+"Primary Energy|Biomass|Modern|w/ CCS",278
+"Primary Energy|Biomass|Modern|w/o CCS",261
+"Primary Energy|Biomass|Traditional",209
+"Primary Energy|Coal",409
+"Primary Energy|Coal|Electricity",51
+"Primary Energy|Coal|Electricity|w/ CCS",48
+"Primary Energy|Coal|Electricity|w/o CCS",50
+"Primary Energy|Coal|w/ CCS",380
+"Primary Energy|Coal|w/o CCS",404
+"Primary Energy|Fossil",408
+"Primary Energy|Fossil|w/ CCS",326
+"Primary Energy|Fossil|w/o CCS",369
+"Primary Energy|Gas",409
+"Primary Energy|Gas|Electricity",51
+"Primary Energy|Gas|Electricity|w/ CCS",48
+"Primary Energy|Gas|Electricity|w/o CCS",50
+"Primary Energy|Gas|w/ CCS",379
+"Primary Energy|Gas|w/o CCS",404
+"Primary Energy|Geothermal",241
+"Primary Energy|Hydro",315
+"Primary Energy|Non-Biomass Renewables",409
+"Primary Energy|Nuclear",408
+"Primary Energy|Ocean",26
+"Primary Energy|Oil",409
+"Primary Energy|Oil|w/ CCS",202
+"Primary Energy|Oil|w/o CCS",384
+"Primary Energy|Other",185
+"Primary Energy|Secondary Energy Trade",127
+"Primary Energy|Solar",315
+"Primary Energy|Wind",315
+"Secondary Energy|Electricity",409
+"Secondary Energy|Electricity|Biomass",409
+"Secondary Energy|Electricity|Biomass|w/ CCS",375
+"Secondary Energy|Electricity|Biomass|w/o CCS",405
+"Secondary Energy|Electricity|Coal",409
+"Secondary Energy|Electricity|Coal|w/ CCS",382
+"Secondary Energy|Electricity|Coal|w/o CCS",406
+"Secondary Energy|Electricity|Fossil",1
+"Secondary Energy|Electricity|Gas",409
+"Secondary Energy|Electricity|Gas|w/ CCS",381
+"Secondary Energy|Electricity|Gas|w/o CCS",406
+"Secondary Energy|Electricity|Geothermal",288
+"Secondary Energy|Electricity|Hydro",409
+"Secondary Energy|Electricity|Non-Biomass Renewables",408
+"Secondary Energy|Electricity|Nuclear",409
+"Secondary Energy|Electricity|Ocean",35
+"Secondary Energy|Electricity|Oil",409
+"Secondary Energy|Electricity|Oil|w/ CCS",115
+"Secondary Energy|Electricity|Oil|w/o CCS",262
+"Secondary Energy|Electricity|Other",1
+"Secondary Energy|Electricity|Solar",409
+"Secondary Energy|Electricity|Solar|CSP",108
+"Secondary Energy|Electricity|Solar|PV",114
+"Secondary Energy|Electricity|Wind",409
+"Secondary Energy|Electricity|Wind|Offshore",57
+"Secondary Energy|Electricity|Wind|Onshore",105
+"Secondary Energy|Gases",387
+"Secondary Energy|Gases|Biomass",136
+"Secondary Energy|Gases|Coal",136
+"Secondary Energy|Gases|Natural Gas",284
+"Secondary Energy|Heat",238
+"Secondary Energy|Heat|Geothermal",97
+"Secondary Energy|Hydrogen",203
+"Secondary Energy|Hydrogen|Biomass",140
+"Secondary Energy|Hydrogen|Biomass|w/ CCS",139
+"Secondary Energy|Hydrogen|Biomass|w/o CCS",139
+"Secondary Energy|Hydrogen|Electricity",140
+"Secondary Energy|Hydrogen|Fossil",53
+"Secondary Energy|Hydrogen|Fossil|w/ CCS",53
+"Secondary Energy|Hydrogen|Fossil|w/o CCS",53
+"Secondary Energy|Liquids",388
+"Secondary Energy|Liquids|Biomass",353
+"Secondary Energy|Liquids|Biomass|w/ CCS",204
+"Secondary Energy|Liquids|Biomass|w/o CCS",284
+"Secondary Energy|Liquids|Coal",177
+"Secondary Energy|Liquids|Coal|w/ CCS",174
+"Secondary Energy|Liquids|Coal|w/o CCS",174
+"Secondary Energy|Liquids|Gas",115
+"Secondary Energy|Liquids|Gas|w/ CCS",112
+"Secondary Energy|Liquids|Gas|w/o CCS",112
+"Secondary Energy|Liquids|Oil",352
+"Secondary Energy|Solids",282
+"Subsidies|Energy|Fossil",32
+"Temperature|Global Mean",132
+"Trade|Primary Energy|Biomass|Volume",49
+"Trade|Primary Energy|Coal|Volume",82
+"Trade|Primary Energy|Gas|Volume",82
+"Trade|Primary Energy|Oil|Volume",82
+"Trade|Secondary Energy|Electricity|Volume",6
+"Trade|Secondary Energy|Liquids|Biomass|Volume",6
+"Value Added|Commercial",26
+"Value Added|Industry",26
+"Water Consumption",1
+"Water Consumption|Electricity",32
+"Water Consumption|Extraction",1
+"Water Consumption|Industrial Water",6
+"Water Consumption|Irrigation",26
+"Water Withdrawal",1
+"Water Withdrawal|Electricity",32
+"Water Withdrawal|Extraction",1
+"Water Withdrawal|Industrial Water",6
+"Water Withdrawal|Irrigation",1

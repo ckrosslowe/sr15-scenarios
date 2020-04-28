@@ -819,10 +819,12 @@ runs_anim %>% select(SecondaryEnergy.Electricity.Gas, SecondaryEnergy.Electricit
   ease_aes('linear')
 anim_save("plots/evolution_gas-vs-renew.gif")
 # ---- changes to 2030 ----
+
 # Data structure needed:
 # Year: 2020-2050
 # Change: (Year-2020)
 # Fuel: 
+g
 
 # ==== WRITE RESULTS ====
 

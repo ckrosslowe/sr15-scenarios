@@ -9,6 +9,26 @@ library(readxl)
 models <- read.csv("data/iamc15_scenario_data_all_regions_r2.0.csv", header=T) %>%
   mutate(mod_scen = str_c(Model, Scenario, sep=" | "))
 
+# Read metadata
+meta <- read_excel("data/sr15_metadata_indicators_r2.0.xlsx", sheet="meta") %>%
+  mutate(mod_scen = str_c(model, scenario, sep=" | "))
+
+# summarise variable availability
+mod_sum <- models %>%
+  left_join(meta[c("mod_scen", "category")], by="mod_scen") %>%
+  #filter(Region %in% "World") %>%
+  mutate(Temp_cat = ifelse(category %in% c("1.5C low overshoot", "Below 1.5C"), "1.5C", 
+                       ifelse(category %in% c("1.5C high overshoot", "Lower 2C", "Higher 2C"), "2C", "Other")),
+         sum = rowSums(!is.na(.[6:106]))) %>%
+  mutate(given = ifelse(sum==0, 0, 1)) %>%
+  group_by(Region, Variable, Temp_cat) %>%
+  summarise(n_runs = sum(given)) %>%
+  ungroup() %>%
+  pivot_wider(id_cols=c("Region", "Variable", "Temp_cat", "n_runs"), names_from=Temp_cat, values_from=n_runs) %>% 
+  replace(is.na(.), 0) %>%
+  mutate(All = rowSums(.[3:5])) %>%
+  write.csv("data/variables_sum.csv", row.names=F)
+
 # Throw away some variables
 models <- models %>% filter(!grepl("^Agricultural", Variable),
                             !grepl("^AR5", Variable),
