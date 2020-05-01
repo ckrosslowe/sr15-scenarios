@@ -5,13 +5,14 @@ library(readxl)
 
 # ==== READ data ====
 
-# Read model data
-models <- read.csv("data/iamc15_scenario_data_all_regions_r2.0.csv", header=T) %>%
-  mutate(mod_scen = str_c(Model, Scenario, sep=" | "))
-
 # Read metadata
 meta <- read_excel("data/sr15_metadata_indicators_r2.0.xlsx", sheet="meta") %>%
   mutate(mod_scen = str_c(model, scenario, sep=" | "))
+
+# Read model data
+models <- read.csv("data/iamc15_scenario_data_all_regions_r2.0.csv", header=T) %>%
+  mutate(mod_scen = str_c(Model, Scenario, sep=" | ")) 
+
 
 # summarise variable availability
 mod_sum <- models %>%
@@ -42,7 +43,8 @@ runs <- models %>%
   pivot_longer(X2000:X2100, names_to="Year", values_to="Value") %>%
   pivot_wider(id_cols=c("Model", "Scenario", "Region", "Variable", "Year", "Value"), names_from=Variable, values_from=Value, names_repair="unique") %>%
   mutate(mod_scen = str_c(Model, Scenario, sep=" | "),
-         Year = as.numeric(str_sub(Year,2,5)))
+         Year = as.numeric(str_sub(Year,2,5))) %>%
+  left_join(meta[c("mod_scen", "category")], by="mod_scen") #join warming category
 colnames(runs) <- gsub(" ", "", colnames(runs))
 colnames(runs) <- gsub("\\|", ".", colnames(runs))
 colnames(runs) <- gsub("\\/", "", colnames(runs))

@@ -9,7 +9,13 @@ library(gganimate)
 # ggplot theme
 theme_set(
   theme_minimal() +
-    theme(legend.position = "right")
+    theme(legend.position = "right",
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.grid.minor.y = element_blank(), 
+          axis.title.x = element_text(margin = margin(t = 10, r = 0, b = 0, l = 0)),
+          axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0))
+    )
 )
 
 # temp category colour scheme
@@ -27,7 +33,11 @@ meta <- read_excel("data/sr15_metadata_indicators_r2.0.xlsx", sheet="meta") %>%
   mutate(mod_scen = str_c(model, scenario, sep=" | "))
 
 # Read model data
-runs_clean <- read.csv("data/runs_clean.csv", header=T, stringsAsFactors = F)
+runs_clean <- read.csv("data/runs_clean.csv", header=T, stringsAsFactors = F) %>%
+  left_join(meta[c("mod_scen", "category")], by="mod_scen") %>%
+  mutate(cat2 = ifelse(category %in% c("1.5C low overshoot", "Below 1.5C"), "<1.5C",
+                       ifelse(category %in% c("1.5C high overshoot", "Lower 2C", "Higher 2C"), "1.5-2C", category)))
+
 
 # Read actual generation data from GER (with IPCC region variable)
 ger <- read.csv("data/ger_ipcc.csv", header = T, stringsAsFactors = F) %>%
@@ -56,27 +66,66 @@ ger_pc_sum_world <- ger %>% filter(Year > 2010) %>%
          pc.Nuclear=100*Nuclear/Total)
 ger_pc_sum <- bind_rows(ger_pc_regions, ger_pc_sum_world)
 
+# ==== Test variable assumptions ====
+
+runs_test <- runs_clean %>%
+  filter(Region %in% "World",
+         Year %in% 2030) %>%
+  select(Emissions.CO2, 
+         Emissions.CO2.AFOLU, 
+         Emissions.CO2.Energy, 
+         Emissions.CO2.IndustrialProcesses, 
+         Emissions.CO2.Other,
+         Emissions.CO2.Energy.Supply.Electricity, 
+         Emissions.CO2.Energy.Supply.Heat, 
+         Emissions.CO2.Energy.Supply.Liquids, 
+         Emissions.CO2.Energy.Supply.Gases, 
+         Emissions.CO2.Energy.Supply.Solids, 
+         Emissions.CO2.Energy.Supply.OtherSector,
+         Emissions.CO2.Energy.Supply) %>%
+  replace(is.na(.), 0) %>%
+  mutate(Total_CO2 = Emissions.CO2.AFOLU + Emissions.CO2.Energy + Emissions.CO2.IndustrialProcesses + Emissions.CO2.Other,
+         Supply_CO2 = Emissions.CO2.Energy.Supply.Electricity + Emissions.CO2.Energy.Supply.Heat + Emissions.CO2.Energy.Supply.Liquids + Emissions.CO2.Energy.Supply.Gases + Emissions.CO2.Energy.Supply.Solids + Emissions.CO2.Energy.Supply.OtherSector) %>%
+  mutate(CO2_frac = 100*Total_CO2/Emissions.CO2,
+         CO2_diff = Emissions.CO2 - Total_CO2,
+         CO2_esup_frac = 100*Supply_CO2/Emissions.CO2.Energy.Supply,
+         CO2_esup_diff = Emissions.CO2.Energy.Supply - Supply_CO2)
+hist(runs_test$CO2_diff, 30)
+hist(runs_test$CO2_frac[runs_test$CO2_frac < 200 & runs_test$CO2_frac > 0], breaks=seq(0,200,5))
+hist(runs_test$CO2_esup_diff, 30, main="Difference between Em.CO2.En.Supply and sum of sub-variables")
+hist(runs_test$CO2_esup_frac[runs_test$CO2_esup_frac < 200 & runs_test$CO2_esup_frac > 0], breaks=seq(0,200,5), main="% difference between Em.CO2.En.Supply and sum of sub-vars", xlab="")
+hist(100*runs_test$Emissions.CO2.Energy.Supply.Electricity[runs_test$Emissions.CO2.Energy.Supply.Electricity>0]/runs_test$Emissions.CO2[runs_test$Emissions.CO2.Energy.Supply.Electricity>0],
+     main="Electricity emissions as % of total emissions")
+
+sum(abs(runs_test$CO2_diff)<50, na.rm=T)
+sum(runs_test$CO2_frac < 0, na.rm=T)
+sum(runs_test$CO2_frac > 200, na.rm=T)
+sum(runs_test$CO2_frac > 95 & runs_test$CO2_frac < 105, na.rm=T)
+
 # ==== Filter scenarios ====
 
 # --- Temperature
-#temp_cats <- c("1.5C low overshoot", "Below 1.5C")
-temp_cats <- c("1.5C low overshoot", "Below 1.5C", "1.5C high overshoot", "Lower 2C", "Higher 2C")
+#t_lab <- "<1.5C"
+t_lab <- "<2C"
+#t_lab <- "1.5-2C"
+
+if (t_lab %in% "<1.5C")  temp_cats <- c("1.5C low overshoot", "Below 1.5C")
+if (t_lab %in% "<2C")    temp_cats <- c("1.5C low overshoot", "Below 1.5C", "1.5C high overshoot", "Lower 2C", "Higher 2C")
+if (t_lab %in% "1.5-2C") temp_cats <- c("1.5C high overshoot", "Lower 2C", "Higher 2C")
 
 temp_ms <- meta$mod_scen[meta$category %in% temp_cats]
 # Select runs that meet temp criteria
 runs <- runs_clean %>% filter(mod_scen %in% temp_ms)
 
-#t_lab <- "<1.5C"
-t_lab <- "<2C"
 
 # --- BECCS & Bioenergy - global
 # Global bioenergy use in 2050
 #hist(runs$PrimaryEnergy.Biomass[runs$Year==2050 & runs$Region %in% "World"])
-bio_lim <- 100
+bio_lim <- 110
 
 # Global BECCS use in 2050
 #hist(runs$CarbonSequestration.CCS.Biomass[runs$Year==2050 & runs$Region %in% "World"], 12)
-beccs_lim <- 5000
+beccs_lim <- 5500
 
 # Which models meet these criteria at a global level in 2050?
 keep_ms <- runs$mod_scen[runs$Year==2050 & runs$Region %in% "World" & runs$CarbonSequestration.CCS.Biomass<=beccs_lim & runs$PrimaryEnergy.Biomass<=bio_lim]
@@ -106,8 +155,12 @@ reg_lab <- "World"
 # --- FILTER runs
 runs <- filter(runs, mod_scen %in% keep_ms, Region %in% reg)
 
-# --- REMOVE runs that don't include selected breakdowns
-if (!reg  %in% "World") runs <- filter(runs, !mod_scen %in% "MESSAGEix-GLOBIOM 1.0 | LowEnergyDemand")
+# --- REMOVE runs that don't include regional breakdowns
+# TEST shows which runs don't have Electricity in 2050 (All do in world, after filters)
+#table(runs$mod_scen[runs$Year==2050], !is.na(runs$SecondaryEnergy.Electricity[runs$Year==2050]))
+if (!reg  %in% "World") runs <- filter(runs, !mod_scen %in% c("MESSAGEix-GLOBIOM 1.0 | LowEnergyDemand",
+                                                              "POLES EMF33 | EMF33_1.5C_limbio",
+                                                              "POLES EMF33 | EMF33_tax_hi_none"))
 
 ######### STATS ############
 
@@ -124,11 +177,11 @@ med_share <- runs %>% select(Year, pc.Renewables, pc.Fossil) %>%
             )
 med_share
 
-######### PLOTS ############
+######### ONE SAMPLE PLOTS ############
 
-year_range <- c(2005, 2100)
+year_range <- c(2020, 2100)
 
-# ---- Electricity Variables Reference:
+# ---- Electricity Variables REFERENCE: ----
 #SecondaryEnergy.Electricity.#SecondaryEnergy.Electricity.Biomass
 #SecondaryEnergy.Electricity.Biomass.wCCS
 #SecondaryEnergy.Electricity.Biomass.woCCS
@@ -199,65 +252,93 @@ ggplot(runs[!is.na(runs$PrimaryEnergy.Fossil) & !is.na(runs$PrimaryEnergy),],
 dev.off()
 
 # ---- Electricity mix ----
-#runs_comp <-
+
+# Set some limits here
+coal_lims <- c(0, max(runs$SecondaryEnergy.Electricity.Coal, na.rm=T))
+gas_lims <- c(0, max(runs$SecondaryEnergy.Electricity.Gas, na.rm=T))
+bio_lims <- c(0, max(runs$SecondaryEnergy.Electricity.Biomass, na.rm=T))
+sz <- 0.5
+
 #ggplot(runs[!is.na(runs$SecondaryEnergy.Electricity.Coal) & !is.na(runs$SecondaryEnergy.Electricity.Gas) & !is.na(runs$SecondaryEnergy.Electricity.Nuclear) & !is.na(runs$SecondaryEnergy.Electricity.Biomass) & !is.na(runs$SecondaryEnergy.Electricity.Hydro) & !is.na(runs$SecondaryEnergy.Electricity.Solar) & !is.na(runs$SecondaryEnergy.Electricity.Wind) & !is.na(runs$SecondaryEnergy.Electricity.Geothermal), ], 
-coal_p <- ggplot(runs[!is.na(runs$SecondaryEnergy.Electricity.Coal), ],
-                 aes(x=Year, y=SecondaryEnergy.Electricity.Coal, group=mod_scen)) + 
-  geom_line(aes(color=mod_scen), size=1) +
-  labs(x="", y="Coal (EJ)", title="") +
+coal_woCCS_p <- ggplot(runs[!is.na(runs$SecondaryEnergy.Electricity.Coal.woCCS), ],
+                 aes(x=Year, y=SecondaryEnergy.Electricity.Coal.woCCS, group=mod_scen)) + 
+  geom_line(aes(color=mod_scen), size=sz, alpha=0.7) +
+  labs(x="", y="Unabated coal (EJ)", title="") +
   theme(legend.position = "none") +
-  lims(x=year_range) +
+  lims(x=year_range, y=coal_lims) +
   scale_color_viridis(discrete=T)
 
-gas_p <- ggplot(runs[!is.na(runs$SecondaryEnergy.Electricity.Gas), ],
-                aes(x=Year, y=SecondaryEnergy.Electricity.Gas, group=mod_scen)) + 
-  geom_line(aes(color=mod_scen), size=1) +
-  labs(x="", y="Gas (EJ)", title="") +
+coal_wCCS_p <- ggplot(runs[!is.na(runs$SecondaryEnergy.Electricity.Coal.wCCS), ],
+                       aes(x=Year, y=SecondaryEnergy.Electricity.Coal.wCCS, group=mod_scen)) + 
+  geom_line(aes(color=mod_scen), size=sz, alpha=0.7) +
+  labs(x="", y="Coal + CCS (EJ)", title="") +
   theme(legend.position = "none") +
-  lims(x=year_range) +
+  lims(x=year_range, y=coal_lims) +
   scale_color_viridis(discrete=T)
 
-# Make 4 other plots, then use plot_grid() to arrange them. :)
+gas_woCCS_p <- ggplot(runs[!is.na(runs$SecondaryEnergy.Electricity.Gas.woCCS), ],
+                aes(x=Year, y=SecondaryEnergy.Electricity.Gas.woCCS, group=mod_scen)) + 
+  geom_line(aes(color=mod_scen), size=sz, alpha=0.7) +
+  labs(x="", y="Unabated gas (EJ)", title="") +
+  theme(legend.position = "none") +
+  lims(x=year_range, y=gas_lims) +
+  scale_color_viridis(discrete=T)
+
+gas_wCCS_p <- ggplot(runs[!is.na(runs$SecondaryEnergy.Electricity.Gas.wCCS), ],
+                aes(x=Year, y=SecondaryEnergy.Electricity.Gas.wCCS, group=mod_scen)) + 
+  geom_line(aes(color=mod_scen), size=sz, alpha=0.7) +
+  labs(x="", y="Gas + CCS (EJ)", title="") +
+  theme(legend.position = "none") +
+  lims(x=year_range, y=gas_lims) +
+  scale_color_viridis(discrete=T)
+
 nuc_p <- ggplot(runs[!is.na(runs$SecondaryEnergy.Electricity.Nuclear), ],
                 aes(x=Year, y=SecondaryEnergy.Electricity.Nuclear, group=mod_scen)) + 
-  geom_line(aes(color=mod_scen), size=1) +
+  geom_line(aes(color=mod_scen), size=sz, alpha=0.7) +
   labs(x="", y="Nuclear (EJ)", title="") +
   theme(legend.position = "none") +
   lims(x=year_range) +
   scale_color_viridis(discrete=T)
 
-bio_p <- ggplot(runs[!is.na(runs$SecondaryEnergy.Electricity.Biomass), ],
-                aes(x=Year, y=SecondaryEnergy.Electricity.Biomass, group=mod_scen)) + 
-  geom_line(aes(color=mod_scen), size=1) +
-  labs(x="", y="Biomass (EJ)", title="") +
+bio_woCCS_p <- ggplot(runs[!is.na(runs$SecondaryEnergy.Electricity.Biomass.woCCS), ],
+                aes(x=Year, y=SecondaryEnergy.Electricity.Biomass.woCCS, group=mod_scen)) + 
+  geom_line(aes(color=mod_scen), size=sz, alpha=0.7) +
+  labs(x="", y="Unabated Biomass (EJ)", title="") +
   theme(legend.position = "none") +
-  lims(x=year_range) +
+  lims(x=year_range, y=bio_lims) +
   scale_color_viridis(discrete=T)
 
-# Wind + Solar + Hydro 
-renew_p <- ggplot(runs[!is.na(runs$SecondaryEnergy.Electricity.Hydro) & !is.na(runs$SecondaryEnergy.Electricity.Solar) & !is.na(runs$SecondaryEnergy.Electricity.Wind), ],# & !is.na(runs$SecondaryEnergy.Electricity.Geothermal), ],# & !is.na(runs$SecondaryEnergy.Electricity.Ocean), ],
+bio_wCCS_p <- ggplot(runs[!is.na(runs$SecondaryEnergy.Electricity.Biomass.wCCS), ],
+                      aes(x=Year, y=SecondaryEnergy.Electricity.Biomass.wCCS, group=mod_scen)) + 
+  geom_line(aes(color=mod_scen), size=sz, alpha=0.7) +
+  labs(x="", y="BECCS (EJ)", title="") +
+  theme(legend.position = "none") +
+  lims(x=year_range, y=bio_lims) +
+  scale_color_viridis(discrete=T)
+
+renew_p <- ggplot(runs[!is.na(runs$SecondaryEnergy.Electricity.Renewables), ],
                   aes(x=Year, 
-                      y=SecondaryEnergy.Electricity.Hydro + SecondaryEnergy.Electricity.Wind + SecondaryEnergy.Electricity.Solar,# + SecondaryEnergy.Electricity.Geothermal,# + SecondaryEnergy.Electricity.Ocean, 
+                      y=SecondaryEnergy.Electricity.Renewables, 
                       group=mod_scen)) + 
-  geom_line(aes(color=mod_scen), size=1) +
-  labs(x="", y="renewables (EJ)", title="") +
+  geom_line(aes(color=mod_scen), size=sz, alpha=0.7) +
+  labs(x="", y="Renewables (EJ)", title="") +
   theme(legend.position = "none") +
   lims(x=year_range) +
   scale_color_viridis(discrete=T)
 
 # All CCS = Coal, Gas, Oil, Biomass
-ccs_p <- ggplot(runs[!is.na(runs$SecondaryEnergy.Electricity.Coal.wCCS) & !is.na(runs$SecondaryEnergy.Electricity.Gas.wCCS) & !is.na(runs$SecondaryEnergy.Electricity.Biomass.wCCS) & !is.na(runs$SecondaryEnergy.Electricity.Oil.wCCS), ],
-                aes(x=Year, 
-                    y=(SecondaryEnergy.Electricity.Coal.wCCS+SecondaryEnergy.Electricity.Gas.wCCS+SecondaryEnergy.Electricity.Biomass.wCCS+SecondaryEnergy.Electricity.Oil.wCCS), 
-                    group=mod_scen)) + 
-  geom_line(aes(color=mod_scen), size=1) +
-  labs(x="", y="All CCS (EJ)", title="") +
-  theme(legend.position = "none") +
-  lims(x=year_range) +
-  scale_color_viridis(discrete=T)
+#ccs_p <- ggplot(runs[!is.na(runs$SecondaryEnergy.Electricity.Coal.wCCS) & !is.na(runs$SecondaryEnergy.Electricity.Gas.wCCS) & !is.na(runs$SecondaryEnergy.Electricity.Biomass.wCCS) & !is.na(runs$SecondaryEnergy.Electricity.Oil.wCCS), ],
+#                aes(x=Year, 
+#                    y=(SecondaryEnergy.Electricity.Coal.wCCS+SecondaryEnergy.Electricity.Gas.wCCS+SecondaryEnergy.Electricity.Biomass.wCCS+SecondaryEnergy.Electricity.Oil.wCCS), 
+#                    group=mod_scen)) + 
+#  geom_line(aes(color=mod_scen), size=1) +
+#  labs(x="", y="All CCS (EJ)", title="") +
+#  theme(legend.position = "none") +
+#  lims(x=year_range) +
+#  scale_color_viridis(discrete=T)
 
-png(file=paste0("plots/elec_mix_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=600,height=800,res=150,type='cairo')
-plot_grid(coal_p, gas_p, renew_p, bio_p, nuc_p, ccs_p, nrow=3, labels=c(paste0(t_lab, ", ", reg_lab)))
+png(file=paste0("plots/elec_mix_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=700,height=1000,res=150,type='cairo')
+plot_grid(coal_woCCS_p, coal_wCCS_p, gas_woCCS_p, gas_wCCS_p, bio_woCCS_p, bio_wCCS_p, renew_p, nuc_p, nrow=4, labels=c(paste0(t_lab, ", ", reg_lab)))
 dev.off()
 
 # ---- Electricity price ----
@@ -818,13 +899,218 @@ runs_anim %>% select(SecondaryEnergy.Electricity.Gas, SecondaryEnergy.Electricit
   transition_time(Year) +
   ease_aes('linear')
 anim_save("plots/evolution_gas-vs-renew.gif")
-# ---- changes to 2030 ----
+# ---- Sector emissions ----
 
-# Data structure needed:
-# Year: 2020-2050
-# Change: (Year-2020)
-# Fuel: 
-g
+elec_CO2 <- runs %>%
+  filter(Year %in% seq(2020, 2100, 10)) %>%
+  group_by(Year) %>%
+  summarise(med = median(Emissions.CO2.Energy.Supply.Electricity, na.rm=T),
+            q25 = quantile(Emissions.CO2.Energy.Supply.Electricity, 0.25, na.rm=T),
+            q75 = quantile(Emissions.CO2.Energy.Supply.Electricity, 0.75, na.rm=T)) %>%
+  ungroup() %>%
+  mutate(Sector="Electricity")
+
+combust_ind_CO2 <- runs %>%
+  filter(Year %in% seq(2020, 2100, 10)) %>%
+  group_by(Year) %>%
+  summarise(med = median(Emissions.CO2.Energy.Demand.Industry, na.rm=T),
+            q25 = quantile(Emissions.CO2.Energy.Demand.Industry, 0.25, na.rm=T),
+            q75 = quantile(Emissions.CO2.Energy.Demand.Industry, 0.75, na.rm=T)) %>%
+  ungroup() %>%
+  mutate(Sector="Combustion - Industry")
+
+trans_CO2 <- runs %>%
+  filter(Year %in% seq(2020, 2100, 10)) %>%
+  group_by(Year) %>%
+  summarise(med = median(Emissions.CO2.Energy.Demand.Transportation, na.rm=T),
+            q25 = quantile(Emissions.CO2.Energy.Demand.Transportation, 0.25, na.rm=T),
+            q75 = quantile(Emissions.CO2.Energy.Demand.Transportation, 0.75, na.rm=T)) %>%
+  ungroup() %>%
+  mutate(Sector="Transport")
+
+afolu_CO2 <- runs %>%
+  filter(Year %in% seq(2020, 2100, 10)) %>%
+  group_by(Year) %>%
+  summarise(med = median(Emissions.CO2.AFOLU, na.rm=T),
+            q25 = quantile(Emissions.CO2.AFOLU, 0.25, na.rm=T),
+            q75 = quantile(Emissions.CO2.AFOLU, 0.75, na.rm=T)) %>%
+  ungroup() %>%
+  mutate(Sector="AFOLU")
+
+industry_CO2 <- runs %>%
+  filter(Year %in% seq(2020, 2100, 10)) %>%
+  group_by(Year) %>%
+  summarise(med = median(Emissions.CO2.IndustrialProcesses, na.rm=T),
+            q25 = quantile(Emissions.CO2.IndustrialProcesses, 0.25, na.rm=T),
+            q75 = quantile(Emissions.CO2.IndustrialProcesses, 0.75, na.rm=T)) %>%
+  ungroup() %>%
+  mutate(Sector="Industrial Processes")
+
+total_CO2 <- runs %>%
+  filter(Year %in% seq(2020, 2100, 10)) %>%
+  group_by(Year) %>%
+  summarise(med = median(Emissions.CO2, na.rm=T),
+            q25 = quantile(Emissions.CO2, 0.25, na.rm=T),
+            q75 = quantile(Emissions.CO2, 0.75, na.rm=T)) %>%
+  ungroup() %>%
+  mutate(Sector="Total")
+
+#mytot_CO2 <- runs %>%
+#  filter(Year %in% seq(2020, 2100, 10)) %>%
+#  select(Year, 
+#         Emissions.CO2.Energy.Supply.Electricity,
+#         Emissions.CO2.Energy.Demand.Industry,
+#         Emissions.CO2.Energy.Demand.Transportation,
+#         Emissions.CO2.AFOLU,
+#         Emissions.CO2.IndustrialProcesses) %>%
+#  drop_na() %>%
+#  mutate(mytot.CO2 = rowSums(.[2:6])) %>%
+#  group_by(Year) %>%
+#  summarise(med = median(mytot.CO2, na.rm=T),
+#            q25 = quantile(mytot.CO2, 0.25, na.rm=T),
+#            q75 = quantile(mytot.CO2, 0.75, na.rm=T)) %>%
+#  ungroup() %>%
+#  mutate(Type="My total")
+
+CO2_sectors <- bind_rows(elec_CO2, combust_ind_CO2, trans_CO2, afolu_CO2, industry_CO2)
+
+png(file=paste0("plots/sector_emissions_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=1400,height=900,res=200,type='cairo')
+ggplot(CO2_sectors, aes(x=Year, y=med, group=Sector)) +
+  geom_hline(yintercept=0, size=0.6, colour="grey50") +
+  geom_line(aes(colour=Sector), size=0.8) +
+  geom_ribbon(aes(ymin=q25, ymax=q75, group=Sector, fill=Sector), alpha=0.15) +
+  labs(title="CO2 emissions by sector", 
+       subtitle=paste0("Region: ", reg_lab, ", Warming: ", t_lab),
+       x="",
+       y="MtCO2/yr") +
+  coord_cartesian(ylim=c(-6000, 13500))
+dev.off()
+
+######### MULTI-SAMPLE PLOTS #########
+
+# ----- Electricity emissions ----
+raw_runs <- runs %>%
+  select(Year,
+         Emissions.CO2.Energy.Supply.Electricity,
+         Emissions.CO2,
+         cat2,
+         mod_scen) %>%
+  drop_na() 
+
+png(file=paste0("plots/elec_emissions_",reg_lab,".png"),width=1400,height=900,res=200,type='cairo')
+raw_runs %>%
+  filter(Year %in% c(2020, 2030, 2040, 2050, 2060, 2070, 2080, 2090, 2100)) %>%
+  group_by(Year, cat2) %>%
+  summarise(med = median(Emissions.CO2.Energy.Supply.Electricity),
+            q25 = quantile(Emissions.CO2.Energy.Supply.Electricity, 0.25),
+            q75 = quantile(Emissions.CO2.Energy.Supply.Electricity, 0.75)) %>%
+  ggplot(aes(x=Year, y=med)) +
+  geom_hline(yintercept = 0, size = 0.8, color = "grey50") +
+  #geom_vline(xintercept = 2060, size=0.8,colour="grey20") +
+  geom_line(data=tibble(x=c(2050,2050,2062,2062), y=c(-4000,-6000,-4000,-6000), g=c(1,1,2,2)), aes(x=x, y=y, group=g), size= 0.8) +
+  #geom_line(data=raw_runs, aes(x=Year, y=Emissions.CO2.Energy.Supply.Electricity, colour=cat2, group=mod_scen), inherit.aes = F, alpha=0.25,size=0.3) +
+  geom_ribbon(aes(ymin=q25, ymax=q75, group=cat2, fill=cat2), alpha=0.3) +
+  geom_line(aes(colour=cat2), size=1) +
+  lims(x=year_range) +
+  #scale_x_continuous(breaks=c(2020, 2030, 2040, 2050, 2060, 2070, 2080, 2090, 2100)) +
+  coord_cartesian(ylim=c(-6000, 13000)) +
+  #scale_y_continuous(limits=c(-5000, 16000)) +
+  labs(x="", y="CO2 (Mt/yr)", fill="Warming",
+       title="CO2 emissions from electricity supply", 
+       subtitle=paste0("Region: ",reg_lab)) +
+  guides(colour=F)
+  #scale_colour_manual()
+dev.off()
+
+# ---- emissins trade-offs ----
+# plotting emissions in one year doesn't show anything.
+# I would need to interpolate emissions, and plot these 'budgets' against each other
+# Example of interpolation code:
+#df <- tibble(x=c(2000:2100)) %>%
+#  mutate(y=2*x-6)
+#df$y[!df$x %in% seq(2000, 2100, 10)] <- NA
+#a <- approx(df$x, df$y, n=101) # This provides a value for each year. 
+
+#runs %>%
+#  filter(Year %in% 2030) %>%
+#  ggplot(aes(x=Emissions.CO2.Energy.Supply.Electricity, y=Emissions.CO2.Energy.Demand.Industry)) +
+#  geom_point(aes(colour=cat2))
+#
+#runs %>%
+#  filter(Year %in% 2030) %>%
+#  ggplot(aes(x=Emissions.CO2.Energy.Supply.Electricity, y=Emissions.CO2.Energy.Demand.Transportation)) +
+#  geom_point(aes(colour=cat2))
+
+# ---- Generation trade-offs ----
+# Box plots - Nuclear
+
+yr <- 2030
+hist(runs$pc.Nuclear[runs$Year == yr], 20, main=paste("% nuclear in",yr,"(<2C)"), xlab="", ylab="")
+m_nuc <- median(runs$pc.Nuclear[runs$Year == yr], na.rm=T)
+q33_nuc <- quantile(runs$pc.Nuclear[runs$Year == yr], 0.33, na.rm=T)
+q66_nuc <- quantile(runs$pc.Nuclear[runs$Year == yr], 0.66, na.rm=T)
+sum(runs$pc.Nuclear[runs$Year == yr] < q33_nuc)
+sum(runs$pc.Nuclear[runs$Year == yr] > q66_nuc)
+# 23 runs in the bottom third of nuclear in 2030
+# 23 runs in the bottom third of nuclear in 2050
+
+
+# Low nuclear runs, re-shaped for boxplot
+low_nuc_runs <- runs %>% 
+  filter(Year==yr,
+         pc.Nuclear < q33_nuc) %>%
+  select(pc.Coal,
+         pc.Gas.woCCS,
+         pc.Renewables,
+         pc.Biomass) %>%
+  pivot_longer(pc.Coal:pc.Biomass,
+               names_to="Fuel",
+               values_to="Gen_pc",
+               names_prefix="pc.") %>%
+  mutate(Sample="Low nuclear")
+
+high_nuc_runs <- runs %>% 
+  filter(Year==yr,
+         pc.Nuclear > q66_nuc) %>%
+  select(pc.Coal,
+         pc.Gas.woCCS,
+         pc.Renewables,
+         pc.Biomass) %>%
+  pivot_longer(pc.Coal:pc.Biomass,
+               names_to="Fuel",
+               values_to="Gen_pc",
+               names_prefix="pc.") %>%
+  mutate(Sample="High nuclear")
+  
+# Start with all, manipulate into right shape, then bind low nuclear runs
+
+png(file=paste0("plots/nuclear_trade-off_",reg_lab,"_",yr,".png"),width=1200,height=800,res=200,type='cairo')
+runs %>%
+  filter(Year==yr) %>%
+  select(pc.Coal,
+         pc.Gas.woCCS,
+         pc.Renewables,
+         pc.Biomass) %>%
+  pivot_longer(pc.Coal:pc.Biomass,
+               names_to="Fuel",
+               values_to="Gen_pc",
+               names_prefix="pc.") %>%
+  mutate(Sample="All") %>%
+  bind_rows(low_nuc_runs) %>%
+  bind_rows(high_nuc_runs) %>%
+  mutate(Fuel=ifelse(Fuel %in% "Gas.woCCS", "Gas (no CCS)", Fuel)) %>%
+  ggplot(aes(x=Fuel, y=Gen_pc)) +
+  geom_boxplot(aes(colour=Sample), varwidth=T) +
+  labs(x="", y="% electricity generation", title=paste("Share of generation in",yr), subtitle=paste0(reg_lab,", ",t_lab)) 
+dev.off()
+
+# Do 'low nuclear' and 'high nuclear' differ significantly in the amount of Gas or renewables needed?
+ks.test(runs$pc.Gas.woCCS[runs$Year==yr & runs$pc.Nuclear < q33_nuc], runs$pc.Gas.woCCS[runs$Year==yr])
+ks.test(runs$pc.Gas.woCCS[runs$Year==yr & runs$pc.Nuclear > q66_nuc], runs$pc.Gas.woCCS[runs$Year==yr])
+ks.test(runs$pc.Renewables[runs$Year==yr & runs$pc.Nuclear < q33_nuc], runs$pc.Renewables[runs$Year==yr])
+ks.test(runs$pc.Renewables[runs$Year==yr & runs$pc.Nuclear > q66_nuc], runs$pc.Renewables[runs$Year==yr])
+
+
 
 # ==== WRITE RESULTS ====
 
