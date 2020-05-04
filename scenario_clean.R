@@ -202,6 +202,7 @@ runs <- runs %>% mutate(pc.Renewables = 100*SecondaryEnergy.Electricity.Renewabl
                         pc.Biomass = 100*SecondaryEnergy.Electricity.Biomass/SecondaryEnergy.Electricity,
                         pc.Gas = 100*SecondaryEnergy.Electricity.Gas/SecondaryEnergy.Electricity,
                         pc.Coal = 100*SecondaryEnergy.Electricity.Coal/SecondaryEnergy.Electricity,
+                        pc.Coal.woCCS = 100*SecondaryEnergy.Electricity.Coal.woCCS/SecondaryEnergy.Electricity,
                         pc.Gas.woCCS = 100*SecondaryEnergy.Electricity.Gas.woCCS/SecondaryEnergy.Electricity
 )
 

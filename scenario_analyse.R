@@ -34,7 +34,7 @@ meta <- read_excel("data/sr15_metadata_indicators_r2.0.xlsx", sheet="meta") %>%
 
 # Read model data
 runs_clean <- read.csv("data/runs_clean.csv", header=T, stringsAsFactors = F) %>%
-  left_join(meta[c("mod_scen", "category")], by="mod_scen") %>%
+  #left_join(meta[c("mod_scen", "category")], by="mod_scen") %>%
   mutate(cat2 = ifelse(category %in% c("1.5C low overshoot", "Below 1.5C"), "<1.5C",
                        ifelse(category %in% c("1.5C high overshoot", "Lower 2C", "Higher 2C"), "1.5-2C", category)))
 
@@ -42,6 +42,18 @@ runs_clean <- read.csv("data/runs_clean.csv", header=T, stringsAsFactors = F) %>
 # Read actual generation data from GER (with IPCC region variable)
 ger <- read.csv("data/ger_ipcc.csv", header = T, stringsAsFactors = F) %>%
   select(-Source)
+
+ger_sum_regions <- ger %>%
+    group_by(Region_ipcc, Type2, Year) %>%
+    summarise(Value_TWh = sum(Value_TWh)) %>%
+    ungroup()
+ger_sum <- ger %>%
+  group_by(Type2, Year) %>%
+  summarise(Value_TWh = sum(Value_TWh)) %>%
+  mutate(Region_ipcc="World") %>%
+  ungroup() %>%
+  bind_rows(ger_sum_regions)
+  #mutate(Type_ipcc = ifelse(Type2))
 
 ger_pc_regions <- ger %>% filter(Year > 2010) %>%
   group_by(Region_ipcc, Type2, Year) %>%
@@ -53,6 +65,7 @@ ger_pc_regions <- ger %>% filter(Year > 2010) %>%
          pc.Gas=100*Gas/Total,
          pc.Renewables=100*Renewables/Total,
          pc.Nuclear=100*Nuclear/Total)
+
 ger_pc_sum_world <- ger %>% filter(Year > 2010) %>%
   group_by(Type2, Year) %>%
   summarise(Production = sum(Value_TWh, na.rm=T)) %>%
@@ -163,6 +176,58 @@ if (!reg  %in% "World") runs <- filter(runs, !mod_scen %in% c("MESSAGEix-GLOBIOM
                                                               "POLES EMF33 | EMF33_tax_hi_none"))
 
 ######### STATS ############
+
+# Summarise runs by technology
+coal_sum <- runs %>%
+  filter(Year %in% c(2020, 2030, 2040, 2050)) %>%
+  group_by(Year) %>%
+  summarise(med = median(SecondaryEnergy.Electricity.Coal),
+            q25 = quantile(SecondaryEnergy.Electricity.Coal, 0.25),
+            q75 = quantile(SecondaryEnergy.Electricity.Coal, 0.75)) %>%
+  ungroup() %>%
+  mutate(Type="Coal_scen")
+
+coal_woCCS_sum <- runs %>%
+  filter(Year %in% c(2020, 2030, 2040, 2050)) %>%
+  group_by(Year) %>%
+  summarise(med = median(SecondaryEnergy.Electricity.Coal.woCCS),
+            q25 = quantile(SecondaryEnergy.Electricity.Coal.woCCS, 0.25),
+            q75 = quantile(SecondaryEnergy.Electricity.Coal.woCCS, 0.75)) %>%
+            #q95 = quantile(SecondaryEnergy.Electricity.Coal.woCCS, 0.95)) %>%
+  ungroup() %>%
+  mutate(Type="Coal_woCCS_scen")
+
+gas_woCCS_sum <- runs %>%
+  filter(Year %in% c(2020, 2030, 2040, 2050)) %>%
+  group_by(Year) %>%
+  summarise(med = median(SecondaryEnergy.Electricity.Gas.woCCS),
+            q25 = quantile(SecondaryEnergy.Electricity.Gas.woCCS, 0.25),
+            q75 = quantile(SecondaryEnergy.Electricity.Gas.woCCS, 0.75)
+  ) %>%
+  ungroup() %>%
+  mutate(Type="Gas_woCCS_scen")
+
+renew_sum <- runs %>%
+  filter(Year %in% c(2020, 2030, 2040, 2050)) %>%
+  group_by(Year) %>%
+  summarise(med = median(SecondaryEnergy.Electricity.Renewables),
+            q25 = quantile(SecondaryEnergy.Electricity.Renewables, 0.25),
+            q75 = quantile(SecondaryEnergy.Electricity.Renewables, 0.75)) %>%
+  ungroup() %>%
+  mutate(Type="Renew_scen")
+
+nuc_sum <- runs %>%
+  filter(Year %in% c(2020, 2030, 2040, 2050)) %>%
+  group_by(Year) %>%
+  summarise(med = median(SecondaryEnergy.Electricity.Nuclear),
+            q25 = quantile(SecondaryEnergy.Electricity.Nuclear, 0.25),
+            q75 = quantile(SecondaryEnergy.Electricity.Nuclear, 0.75)) %>%
+  ungroup() %>%
+  mutate(Type="Nuclear_scen")
+
+runs_summary <- bind_rows(coal_sum, coal_woCCS_sum, gas_woCCS_sum, renew_sum, nuc_sum)
+
+
 
 # Median elec shares by year
 med_share <- runs %>% select(Year, pc.Renewables, pc.Fossil) %>%
@@ -583,66 +648,7 @@ table(runs$mod_scen[runs$Year==test_yr], useNA="always", is.na(runs$FinalEnergy[
 # all 1.5C scenarios at World level have 2020, 2030, and 2050!
 
 # ---- TOTAL ELECTRICITY ----
-coal_sum <- runs %>%
-  filter(Year %in% c(2020, 2030, 2040, 2050)) %>%
-  group_by(Year) %>%
-  summarise(med = median(SecondaryEnergy.Electricity.Coal),
-            q25 = quantile(SecondaryEnergy.Electricity.Coal, 0.25),
-            q75 = quantile(SecondaryEnergy.Electricity.Coal, 0.75)) %>%
-  ungroup() %>%
-  mutate(Type="Coal_scen")
 
-coal_woCCS_sum <- runs %>%
-  filter(Year %in% c(2020, 2030, 2040, 2050)) %>%
-  group_by(Year) %>%
-  summarise(med = median(SecondaryEnergy.Electricity.Coal.woCCS),
-            q25 = quantile(SecondaryEnergy.Electricity.Coal.woCCS, 0.25),
-            q75 = quantile(SecondaryEnergy.Electricity.Coal.woCCS, 0.75)) %>%
-  ungroup() %>%
-  mutate(Type="Coal_woCCS_scen")
-
-gas_woCCS_sum <- runs %>%
-  filter(Year %in% c(2020, 2030, 2040, 2050)) %>%
-  group_by(Year) %>%
-  summarise(med = median(SecondaryEnergy.Electricity.Gas.woCCS),
-            q25 = quantile(SecondaryEnergy.Electricity.Gas.woCCS, 0.25),
-            q75 = quantile(SecondaryEnergy.Electricity.Gas.woCCS, 0.75)
-  ) %>%
-  ungroup() %>%
-  mutate(Type="Gas_woCCS_scen")
-
-renew_sum <- runs %>%
-  filter(Year %in% c(2020, 2030, 2040, 2050)) %>%
-  group_by(Year) %>%
-  summarise(med = median(SecondaryEnergy.Electricity.Renewables),
-            q25 = quantile(SecondaryEnergy.Electricity.Renewables, 0.25),
-            q75 = quantile(SecondaryEnergy.Electricity.Renewables, 0.75)) %>%
-  ungroup() %>%
-  mutate(Type="Renew_scen")
-
-nuc_sum <- runs %>%
-  filter(Year %in% c(2020, 2030, 2040, 2050)) %>%
-  group_by(Year) %>%
-  summarise(med = median(SecondaryEnergy.Electricity.Nuclear),
-            q25 = quantile(SecondaryEnergy.Electricity.Nuclear, 0.25),
-            q75 = quantile(SecondaryEnergy.Electricity.Nuclear, 0.75)) %>%
-  ungroup() %>%
-  mutate(Type="Nuclear_scen")
-
-runs_summary <- bind_rows(coal_sum, coal_woCCS_sum, gas_woCCS_sum, renew_sum, nuc_sum)
-
-if (reg_lab == "World") {
-  ger_sum <- ger %>%
-    group_by(Type2, Year) %>%
-    summarise(Value_TWh = sum(Value_TWh)) %>%
-    ungroup()
-} else {
-  ger_sum <- ger %>%
-    filter(Region_ipcc %in% reg_lab) %>%
-    group_by(Type2, Year) %>%
-    summarise(Value_TWh = sum(Value_TWh)) %>%
-    ungroup()
-}
 
 # Function to plot different summarised technologies
 # fuel_type
@@ -712,7 +718,9 @@ med_plot <- function(fuel_type, yr_max, ttl) {
     geom_line(data=scen_dat, 
               aes(x=Year, y=Value, group=mod_scen), 
               size=0.5, alpha=0.3, colour="grey20") +
-    geom_line(data=filter(ger_sum, Type2 %in% ger_ft), 
+    geom_line(data=filter(ger_sum, 
+                          Type2 %in% ger_ft,
+                          Region_ipcc %in% reg_lab), 
               aes(x=Year, y=Value_TWh/278, colour=Type2), size=2) +
     labs(x="",
          y="Electricity production (EJ)",
@@ -1111,6 +1119,132 @@ ks.test(runs$pc.Renewables[runs$Year==yr & runs$pc.Nuclear < q33_nuc], runs$pc.R
 ks.test(runs$pc.Renewables[runs$Year==yr & runs$pc.Nuclear > q66_nuc], runs$pc.Renewables[runs$Year==yr])
 
 
+
+# ---- 1.5C vs 2C tech timelines ----
+
+coal_sum <- runs %>%
+  filter(Year %in% c(2020, 2030, 2040, 2050)) %>%
+  group_by(Year, cat2) %>%
+  summarise(med = median(SecondaryEnergy.Electricity.Coal.woCCS),
+            q25 = quantile(SecondaryEnergy.Electricity.Coal.woCCS, 0.25),
+            q75 = quantile(SecondaryEnergy.Electricity.Coal.woCCS, 0.75)) %>%
+  ungroup() %>%
+  mutate(Type2="Coal")
+
+gas_sum <- runs %>%
+  filter(Year %in% c(2020, 2030, 2040, 2050)) %>%
+  group_by(Year, cat2) %>%
+  summarise(med = median(SecondaryEnergy.Electricity.Gas.woCCS),
+            q25 = quantile(SecondaryEnergy.Electricity.Gas.woCCS, 0.25),
+            q75 = quantile(SecondaryEnergy.Electricity.Gas.woCCS, 0.75)
+  ) %>%
+  ungroup() %>%
+  mutate(Type2="Gas")
+
+renew_sum <- runs %>%
+  filter(Year %in% c(2020, 2030, 2040, 2050)) %>%
+  group_by(Year, cat2) %>%
+  summarise(med = median(SecondaryEnergy.Electricity.Renewables),
+            q25 = quantile(SecondaryEnergy.Electricity.Renewables, 0.25),
+            q75 = quantile(SecondaryEnergy.Electricity.Renewables, 0.75)) %>%
+  ungroup() %>%
+  mutate(Type2="Renewables")
+
+nuc_sum <- runs %>%
+  filter(Year %in% c(2020, 2030, 2040, 2050)) %>%
+  group_by(Year, cat2) %>%
+  summarise(med = median(SecondaryEnergy.Electricity.Nuclear),
+            q25 = quantile(SecondaryEnergy.Electricity.Nuclear, 0.25),
+            q75 = quantile(SecondaryEnergy.Electricity.Nuclear, 0.75)) %>%
+  ungroup() %>%
+  mutate(Type2="Nuclear")
+
+
+runs_summary <- bind_rows(coal_sum, gas_sum, renew_sum, nuc_sum, filter(ger_sum, Region_ipcc %in% reg_lab))
+
+png(file=paste0("plots/coal_woCCS_comp_",reg_lab,".png"),width=1200,height=800,res=200,type='cairo')
+ggplot(filter(runs_summary, Type2 %in% "Coal", Year %in% c(2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2030,2040,2050)), 
+       aes(x=Year)) +
+  geom_ribbon(aes(ymin=q25, ymax=q75, group=cat2, fill=cat2), alpha=0.4) +
+  geom_line(size=0.8, aes(y=med, group=cat2, colour=cat2)) +
+  geom_point(size=3, aes(y=med, colour=cat2)) +
+  # Real data
+  geom_line(aes(y=Value_TWh/278, color=Type2, group=Type2), size=1) +
+  labs(x="",
+       y="Electricity production (EJ)",
+       title="Unabated coal electricity in different warming scenarios",
+       subtitle=paste0("Region: ", reg_lab),
+       colour="",
+       fill="") +
+  scale_x_continuous(breaks=c(2010, 2020, 2030, 2040, 2050), limits = c(2010, 2050)) +
+  scale_color_manual(values=c("Coal"="red", "<1.5C"="skyblue3", "1.5-2C"="Coral1"),
+                     labels=c("Coal"="Historic\nproduction")) +
+  scale_fill_manual(values=c("<1.5C"="skyblue3", "1.5-2C"="Coral1")) +
+  guides(fill=F)
+dev.off()
+
+######### OUTLIERS ############
+# ---- High coal ----
+# Histogram of coal in given year <1.5C
+hist(runs$SecondaryEnergy.Electricity.Coal.woCCS[runs$Year==2040 & runs$cat2 %in% "<1.5C"], 20)
+# Histogram of coal in given year 1.5-2C
+hist(runs$SecondaryEnergy.Electricity.Coal.woCCS[runs$Year==2030 & runs$cat2 %in% "1.5-2C"], 20)
+
+#out1 <- c("GCAM 4.2 | SSP1-19", "AIM/CGE 2.0 | SSP1-19")
+out1 <- runs$mod_scen[runs$cat2 %in% "<1.5C" & runs$Year==2040 & runs$SecondaryEnergy.Electricity.Coal.woCCS > quantile(runs$SecondaryEnergy.Electricity.Coal.woCCS[runs$cat2 %in% "<1.5C" & runs$Year==2040], 0.95, na.rm=T)]
+#out2 <- c("AIM/CGE 2.0 | SSP1-26", "GCAM 4.2 | SSP1-26", "IMAGE 3.0.1 | SSP1-26", "POLES EMF33 | EMF33_tax_hi_none")
+out2 <- runs$mod_scen[runs$cat2 %in% "1.5-2C" & runs$Year==2040 & runs$SecondaryEnergy.Electricity.Coal.woCCS > quantile(runs$SecondaryEnergy.Electricity.Coal.woCCS[runs$cat2 %in% "1.5-2C" & runs$Year==2040], 0.95, na.rm=T)]
+
+runs_out <- filter(runs, mod_scen %in% out1 | mod_scen %in% out2)
+
+sz <- 0.5
+ggplot(data=runs[!is.na(runs$SecondaryEnergy.Electricity.Coal.woCCS),], 
+       aes(x=Year, 
+           y=SecondaryEnergy.Electricity.Coal.woCCS, 
+           group=mod_scen)) +
+  geom_line(colour="grey50", alpha=0.7, size=sz) +
+  geom_line(data=runs_out[!is.na(runs_out$SecondaryEnergy.Electricity.Coal.woCCS),], aes(colour=mod_scen), size=2*sz) +
+  coord_cartesian(xlim=c(2010, 2060)) +
+  facet_wrap(vars(cat2)) +
+  labs(y="Unabated coal electricity (EJ)", x="") +
+  scale_colour_viridis(discrete = T)
+
+ggplot(data=runs[!is.na(runs$pc.Coal.woCCS),],
+       aes(x=Year, 
+           y=pc.Coal.woCCS, 
+           group=mod_scen)) +
+  geom_line(colour="grey50", alpha=0.7, size=sz) +
+  geom_line(data=runs_out[!is.na(runs_out$pc.Coal.woCCS),], aes(colour=mod_scen), size=2*sz) +
+  coord_cartesian(xlim=c(2010, 2060)) +
+  facet_wrap(vars(cat2)) +
+  labs(y="Coal share of electricity (%)", x="") +
+  scale_colour_viridis(discrete=T)
+
+ggplot(data=runs[!is.na(runs$Emissions.CO2.Energy.Supply.Electricity),],
+       aes(x=Year, 
+           y=Emissions.CO2.Energy.Supply.Electricity, 
+           group=mod_scen)) +
+  geom_hline(yintercept = 0, colour="grey20", size=1) +
+  geom_line(colour="grey50", alpha=0.7, size=sz) +
+  geom_line(data=runs_out[!is.na(runs_out$Emissions.CO2.Energy.Supply.Electricity),], aes(colour=mod_scen), size=2*sz) +
+  coord_cartesian(xlim=c(2010, 2100), ylim=c(-6000, 15000)) +
+  facet_wrap(vars(cat2)) +
+  labs(y="Emissions from electricity (Mt CO2)", x="") +
+  scale_colour_viridis(discrete=T)
+
+ggplot(data=runs[!is.na(runs$Emissions.CO2),],
+       aes(x=Year, 
+           y=Emissions.CO2, 
+           group=mod_scen)) +
+  geom_hline(yintercept = 0, colour="grey20", size=1) +
+  geom_line(colour="grey50", alpha=0.7, size=sz) +
+  geom_line(data=runs_out[!is.na(runs_out$Emissions.CO2),], aes(colour=mod_scen), size=2*sz) +
+  coord_cartesian(xlim=c(2010, 2100)) + #ylim=c(-6000, 15000)) +
+  facet_wrap(vars(cat2)) +
+  labs(y="Emissions from transport (Mt CO2)", x="") +
+  scale_colour_viridis(discrete=T)
+
+max(runs$SecondaryEnergy.Electricity.Coal.wCCS/runs$SecondaryEnergy.Electricity, na.rm=T)
 
 # ==== WRITE RESULTS ====
 
