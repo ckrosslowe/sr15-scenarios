@@ -164,8 +164,6 @@ ger <- read.csv("data/global_electricity_review_2020_v2.csv", header = T) %>%
 mod_exclude <- c("Reference", "C-ROADS-5.005", "Shell World Energy Model 2018")
 runs <- filter(runs, !Model %in% mod_exclude)
 
-# Throw away some variables
-
 # For all remaining runs...
 ms <- unique(runs$mod_scen)
 n_ms <- length(ms)
@@ -197,7 +195,12 @@ runs <- runs %>% mutate(SecondaryEnergy.Electricity.Renewables = SecondaryEnergy
 )
 
 runs <- runs %>% mutate(pc.Renewables = 100*SecondaryEnergy.Electricity.Renewables/SecondaryEnergy.Electricity,
+                        pc.Wind = 100*SecondaryEnergy.Electricity.Wind/SecondaryEnergy.Electricity,
+                        pc.Solar = 100*SecondaryEnergy.Electricity.Solar/SecondaryEnergy.Electricity,
+                        pc.Hydro = 100*SecondaryEnergy.Electricity.Hydro/SecondaryEnergy.Electricity,
+                        pc.OtherRenew = 100*(SecondaryEnergy.Electricity.Geothermal + SecondaryEnergy.Electricity.Ocean)/SecondaryEnergy.Electricity,
                         pc.Fossil = 100*SecondaryEnergy.Electricity.Fossil2/SecondaryEnergy.Electricity,
+                        pc.OtherFossil = 100*SecondaryEnergy.Electricity.Oil/SecondaryEnergy.Electricity,
                         pc.Nuclear = 100*SecondaryEnergy.Electricity.Nuclear/SecondaryEnergy.Electricity,
                         pc.Biomass = 100*SecondaryEnergy.Electricity.Biomass/SecondaryEnergy.Electricity,
                         pc.Gas = 100*SecondaryEnergy.Electricity.Gas/SecondaryEnergy.Electricity,

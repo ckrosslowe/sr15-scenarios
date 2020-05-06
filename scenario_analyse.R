@@ -25,7 +25,29 @@ temp_cols <- c("Below 1.5C"="steelblue1",
                "Lower 2C"="darkorange",
                "Higher 2C"="indianred2")
 
+fuel_cols <- c("Wind"="#FF624E", "#E41A1C", # Red - Wind
+               "Gas"="#3A91D6", #377EB8", # Blue - coal
+               "Biomass"="#60BC5D", #4CAB49  Green - Biomass & waste
+               "Nuclear"="#AA47B9", #984EA3 # Purple - Nuclear
+               #""="#FF7C00", # Orange
+               "Solar"="#FFC300", "#FFD700", # Gold - Solar
+               "Other fossil"="#B76022", #8B4513 # Brown - Other fossil
+               "Other renewable"="#F98BC5", # Pink - Other renewables
+               "Hydro"="#6CE3E5", #00CED1  # Dark turquoise - Hydro
+               "Coal"="#2F4F4F")
+
 # Variables explained here https://data.ene.iiasa.ac.at/iamc-1.5c-explorer/#/docs
+
+# --- Region - key to set reg_lab value
+regions <- tibble(region=c("R5OECD90+EU","R5MAF","R5ASIA","R5LAM","R5REF","R5ROWO","World"),
+                  reg_lab=c("OECD90_EU","MAF","ASIA","LAM","REF","ROW","World"))
+
+ms_exclude <- c("MESSAGEix-GLOBIOM 1.0 | LowEnergyDemand",
+  "POLES EMF33 | EMF33_1.5C_limbio",
+  "POLES EMF33 | EMF33_tax_hi_none")
+
+# Create run filtering function
+source("filter_runs.R")
 
 # ==== READ data ====
 # Read metadata
@@ -36,7 +58,8 @@ meta <- read_excel("data/sr15_metadata_indicators_r2.0.xlsx", sheet="meta") %>%
 runs_clean <- read.csv("data/runs_clean.csv", header=T, stringsAsFactors = F) %>%
   #left_join(meta[c("mod_scen", "category")], by="mod_scen") %>%
   mutate(cat2 = ifelse(category %in% c("1.5C low overshoot", "Below 1.5C"), "<1.5C",
-                       ifelse(category %in% c("1.5C high overshoot", "Lower 2C", "Higher 2C"), "1.5-2C", category)))
+                       ifelse(category %in% c("1.5C high overshoot", "Lower 2C", "Higher 2C"), "1.5-2C", category)),
+         category = factor(category, ordered=T, levels=c("Below 1.5C", "1.5C low overshoot", "1.5C high overshoot", "Lower 2C", "Higher 2C", "Above 2C", "no-climate-assessment")))
 
 
 # Read actual generation data from GER (with IPCC region variable)
@@ -66,7 +89,7 @@ ger_pc_regions <- ger %>% filter(Year > 2010) %>%
          pc.Renewables=100*Renewables/Total,
          pc.Nuclear=100*Nuclear/Total)
 
-ger_pc_sum_world <- ger %>% filter(Year > 2010) %>%
+ger_pc_sum <- ger %>% filter(Year > 2010) %>%
   group_by(Type2, Year) %>%
   summarise(Production = sum(Value_TWh, na.rm=T)) %>%
   #ungroup() %>%
@@ -76,8 +99,8 @@ ger_pc_sum_world <- ger %>% filter(Year > 2010) %>%
   mutate(pc.Coal=100*Coal/Total,
          pc.Gas=100*Gas/Total,
          pc.Renewables=100*Renewables/Total,
-         pc.Nuclear=100*Nuclear/Total)
-ger_pc_sum <- bind_rows(ger_pc_regions, ger_pc_sum_world)
+         pc.Nuclear=100*Nuclear/Total) %>%
+         bind_rows(ger_pc_regions)
 
 # ==== Test variable assumptions ====
 
@@ -118,62 +141,29 @@ sum(runs_test$CO2_frac > 95 & runs_test$CO2_frac < 105, na.rm=T)
 # ==== Filter scenarios ====
 
 # --- Temperature
-t_lab <- "<1.5C"
-#t_lab <- "<2C"
+#t_lab <- "<1.5C"
+t_lab <- "<2C"
 #t_lab <- "1.5-2C"
 
 if (t_lab %in% "<1.5C")  temp_cats <- c("1.5C low overshoot", "Below 1.5C")
 if (t_lab %in% "<2C")    temp_cats <- c("1.5C low overshoot", "Below 1.5C", "1.5C high overshoot", "Lower 2C", "Higher 2C")
 if (t_lab %in% "1.5-2C") temp_cats <- c("1.5C high overshoot", "Lower 2C", "Higher 2C")
 
-temp_ms <- meta$mod_scen[meta$category %in% temp_cats]
-# Select runs that meet temp criteria
-runs <- runs_clean %>% filter(mod_scen %in% temp_ms)
-
-
-# --- BECCS & Bioenergy - global
-# Global bioenergy use in 2050
-#hist(runs$PrimaryEnergy.Biomass[runs$Year==2050 & runs$Region %in% "World"])
-bio_lim <- 110
-
-# Global BECCS use in 2050
-#hist(runs$CarbonSequestration.CCS.Biomass[runs$Year==2050 & runs$Region %in% "World"], 12)
-beccs_lim <- 5500
-
-# Which models meet these criteria at a global level in 2050?
-keep_ms <- runs$mod_scen[runs$Year==2050 & runs$Region %in% "World" & runs$CarbonSequestration.CCS.Biomass<=beccs_lim & runs$PrimaryEnergy.Biomass<=bio_lim]
-
-# --- Region
-reg <- "R5OECD90+EU"    # IPCC name
-reg_lab <- "OECD90_EU"  # GER name and chart label 
-
-#reg <- "R5MAF"
-#reg_lab <- "MAF"
-
-#reg <- "R5ASIA"
-#reg_lab <- "ASIA"
-
-#reg <- "R5LAM"
-#reg_lab <- "LAM"
-
-#reg <- "R5REF"
-#reg_lab <- "REF"
-
-#reg <- "R5ROWO"
-#reg_lab <- "ROW"
-
 #reg <- "World"
-#reg_lab <- "World"
+#reg <- "R5OECD90+EU"
+#reg <- "R5MAF"
+reg <- "R5ASIA"
+#reg <- "R5LAM"
+#reg <- "R5REF"
+#reg <- "R5ROWO"
 
-# --- FILTER runs
-runs <- filter(runs, mod_scen %in% keep_ms, Region %in% reg)
+reg_lab <- regions$reg_lab[regions$region %in% reg]
 
-# --- REMOVE runs that don't include regional breakdowns
-# TEST shows which runs don't have Electricity in 2050 (All do in world, after filters)
-#table(runs$mod_scen[runs$Year==2050], !is.na(runs$SecondaryEnergy.Electricity[runs$Year==2050]))
-if (!reg  %in% "World") runs <- filter(runs, !mod_scen %in% c("MESSAGEix-GLOBIOM 1.0 | LowEnergyDemand",
-                                                              "POLES EMF33 | EMF33_1.5C_limbio",
-                                                              "POLES EMF33 | EMF33_tax_hi_none"))
+limits <- c("bio"=110,
+            "beccs"=5500)
+
+runs <- runs_clean %>% filter_runs(temp_cats=temp_cats, reg=reg, limits=limits, ms_exclude=ms_exclude)
+#length(unique(runs$mod_scen))
 
 ######### STATS ############
 
@@ -641,6 +631,63 @@ png(file=paste0("plots/ccs_breakdown_",str_replace(t_lab,"<",""),"_",reg_lab,".p
 plot_grid(coal_all_p, coal_no_ccs_p, coal_ccs_p, gas_all_p, gas_no_ccs_p, gas_ccs_p, bio_all_p, bio_no_ccs_p, bio_ccs_p, nrow=3, labels=c(paste0(t_lab,", ",reg_lab)))
 dev.off()
 
+
+# ---- Warming categories: distribution ----
+
+png(file=paste0("plots/category_dist_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=1200,height=800,res=180,type='cairo')
+runs %>% group_by(category) %>%
+  summarise(Count = n_distinct(mod_scen)) %>%
+  ggplot(aes(x=category, y=Count)) +
+  geom_bar(stat='identity', fill="deepskyblue") +
+  labs(title="Distribution of selected runs over warming categories", x="") +
+  geom_text(aes(x=category, y=Count-1, label=Count), size=4)
+dev.off()
+
+# ---- Fossil vs Fossil-free ONE YEAR ----
+yr <- 2030
+
+png(file=paste0("plots/fossil_vs_fossilFree_",str_replace(t_lab,"<",""),"_",reg_lab,"_",yr,".png"),width=1200,height=800,res=180,type='cairo')
+runs %>% filter(Year==yr) %>%
+  mutate(pc.FossilFree = pc.Renewables+pc.Nuclear+pc.Biomass) %>%
+  select(pc.Fossil, pc.FossilFree) %>%
+  pivot_longer(pc.Fossil:pc.FossilFree,
+               names_to="Fuel",
+               values_to="Gen_pc",
+               names_prefix="pc.") %>%
+  mutate(Fuel=ifelse(Fuel %in% "FossilFree", "Fossil free", Fuel)) %>%
+  ggplot(aes(x=Gen_pc)) +
+  geom_histogram(aes(fill=Fuel), bins=20) +
+  facet_wrap(vars(Fuel)) +
+  labs(x="Share of electricity production (%)", y="") +
+  scale_fill_manual(values=c("Fossil"="grey30", "Fossil free"="deepskyblue")) +
+  guides(fill=F) +
+  theme(text=element_text(size=9),
+        strip.text = element_text(size=9))
+dev.off()
+
+# ---- Share of electricity mix INDIVIDUAL MODELS ----
+yr <- 2030
+png(file=paste0("plots/elec_share_by_model_",str_replace(t_lab,"<",""),"_",reg_lab,"_",yr,".png"),width=1200,height=1000,res=200,type='cairo')
+runs %>% filter(Year %in% yr) %>%
+  select(mod_scen, pc.Solar, pc.Hydro, pc.Wind, pc.Coal, pc.Gas, pc.Nuclear, pc.Biomass, pc.OtherRenew, pc.OtherFossil) %>%
+  pivot_longer(pc.Solar:pc.OtherFossil,
+               names_to="Fuel",
+               values_to="Gen_pc",
+               names_prefix="pc.") %>%
+  mutate(Fuel = ifelse(Fuel %in% "OtherRenew", "Other renewable", 
+                       ifelse(Fuel %in% "OtherFossil", "Other fossil", Fuel))) %>%
+  mutate(Fuel = factor(Fuel, ordered=T, levels=c("Wind", "Solar", "Hydro", "Other renewable", "Nuclear", "Biomass", "Gas", "Coal", "Other fossil"))) %>%
+  mutate(mod_scen = str_replace(mod_scen, "\\|", "\n")) %>%
+  ggplot(aes(x=mod_scen, y=Gen_pc, fill=Fuel)) +
+  geom_bar(position="fill", stat="identity") +
+  labs(y="", x="", title="Share of electricity production", 
+       subtitle=paste0("Year: ",yr,", Region: ",reg_lab,", ",t_lab)) +
+  scale_fill_manual(values=fuel_cols) +
+  scale_y_continuous(breaks=c(0.2, 0.4, 0.6, 0.8, 1.0), labels=c("20%", "40%", "60%", "80%", "100%")) +
+  theme(text = element_text(size=9),
+        axis.text.x = element_text(angle=55, hjust=1, size=6)
+        ) 
+dev.off()
 
 # ==== Summarising scenarios ====
 test_yr <- 2050
@@ -1122,6 +1169,9 @@ ks.test(runs$pc.Renewables[runs$Year==yr & runs$pc.Nuclear > q66_nuc], runs$pc.R
 
 # ---- 1.5C vs 2C tech timelines ----
 
+# See 2019 regional distribution
+#filter(ger_sum, Year==2019, Type2 %in% "Biomass") 
+
 coal_sum <- runs %>%
   filter(Year %in% c(2020, 2030, 2040, 2050)) %>%
   group_by(Year, cat2) %>%
@@ -1140,6 +1190,16 @@ gas_sum <- runs %>%
   ) %>%
   ungroup() %>%
   mutate(Type2="Gas")
+
+biomass_sum <- runs %>%
+  filter(Year %in% c(2020, 2030, 2040, 2050)) %>%
+  group_by(Year, cat2) %>%
+  summarise(med = median(SecondaryEnergy.Electricity.Biomass.woCCS),
+            q25 = quantile(SecondaryEnergy.Electricity.Biomass.woCCS, 0.25),
+            q75 = quantile(SecondaryEnergy.Electricity.Biomass.woCCS, 0.75)
+  ) %>%
+  ungroup() %>%
+  mutate(Type2="Biomass")
 
 renew_sum <- runs %>%
   filter(Year %in% c(2020, 2030, 2040, 2050)) %>%
@@ -1160,7 +1220,7 @@ nuc_sum <- runs %>%
   mutate(Type2="Nuclear")
 
 
-runs_summary <- bind_rows(coal_sum, gas_sum, renew_sum, nuc_sum, filter(ger_sum, Region_ipcc %in% reg_lab))
+runs_summary <- bind_rows(coal_sum, gas_sum, biomass_sum, renew_sum, nuc_sum, filter(ger_sum, Region_ipcc %in% reg_lab))
 
 png(file=paste0("plots/coal_woCCS_comp_",reg_lab,".png"),width=1200,height=800,res=200,type='cairo')
 ggplot(filter(runs_summary, Type2 %in% "Coal", Year %in% c(2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2030,2040,2050)), 
@@ -1200,6 +1260,27 @@ ggplot(filter(runs_summary, Type2 %in% "Gas", Year %in% c(2010,2011,2012,2013,20
   scale_x_continuous(breaks=c(2010, 2020, 2030, 2040, 2050), limits = c(2010, 2050)) +
   scale_color_manual(values=c("Gas"="deepskyblue3", "<1.5C"="skyblue3", "1.5-2C"="Coral1"),
                      labels=c("Gas"="Historic\nproduction")) +
+  scale_fill_manual(values=c("<1.5C"="skyblue3", "1.5-2C"="Coral1")) +
+  guides(fill=F)
+dev.off()
+
+png(file=paste0("plots/biomass_woCCS_comp_",reg_lab,".png"),width=1200,height=800,res=200,type='cairo')
+ggplot(filter(runs_summary, Type2 %in% "Biomass", Year %in% c(2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2030,2040,2050)), 
+       aes(x=Year)) +
+  geom_ribbon(aes(ymin=q25, ymax=q75, group=cat2, fill=cat2), alpha=0.4) +
+  geom_line(size=0.8, aes(y=med, group=cat2, colour=cat2)) +
+  geom_point(size=3, aes(y=med, colour=cat2)) +
+  # Real data
+  geom_line(aes(y=Value_TWh/278, color=Type2, group=Type2), size=1) +
+  labs(x="",
+       y="Electricity production (EJ)",
+       title="Biomass (unabated) electricity in different warming scenarios",
+       subtitle=paste0("Region: ", reg_lab),
+       colour="",
+       fill="") +
+  scale_x_continuous(breaks=c(2010, 2020, 2030, 2040, 2050), limits = c(2010, 2050)) +
+  scale_color_manual(values=c("Biomass"="#60BC5D", "<1.5C"="skyblue3", "1.5-2C"="Coral1"),
+                     labels=c("Biomass"="Historic production\n(Biomass & waste)")) +
   scale_fill_manual(values=c("<1.5C"="skyblue3", "1.5-2C"="Coral1")) +
   guides(fill=F)
 dev.off()

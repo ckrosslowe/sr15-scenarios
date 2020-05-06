@@ -1,0 +1,26 @@
+# Function to filter runs
+require(tidyverse)
+
+# Inputs: run sample, warming categories, region, sustainability limits, models to exclude if region selected
+filter_runs <- function(runs, temp_cats, reg="World", limits, ms_exclude) {
+  
+  # Select runs that meet temp criteria
+  runs <- runs %>% filter(category %in% temp_cats)
+
+  # --- BECCS & Bioenergy - global
+  bio_lim <- limits["bio"]
+  beccs_lim <- limits["beccs"]
+  # Which models meet these criteria at a global level in 2050?
+  keep_ms <- runs$mod_scen[runs$Year==2050 & runs$Region %in% "World" & runs$CarbonSequestration.CCS.Biomass<=beccs_lim & runs$PrimaryEnergy.Biomass<=bio_lim]
+  
+  # --- FILTER runs
+  runs <- filter(runs, mod_scen %in% keep_ms, Region %in% reg)
+  
+  # --- REMOVE runs that don't include regional breakdowns
+  # TEST shows which runs don't have Electricity in 2050 (All do in world, after filters)
+  #table(runs$mod_scen[runs$Year==2050], !is.na(runs$SecondaryEnergy.Electricity[runs$Year==2050]))
+  if (!reg  %in% "World") runs <- filter(runs, !mod_scen %in% ms_exclude)
+  
+  return(runs)
+  
+}
