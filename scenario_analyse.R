@@ -141,18 +141,18 @@ sum(runs_test$CO2_frac > 95 & runs_test$CO2_frac < 105, na.rm=T)
 # ==== Filter scenarios ====
 
 # --- Temperature
-#t_lab <- "<1.5C"
-t_lab <- "<2C"
+t_lab <- "<1.5C"
+#t_lab <- "<2C"
 #t_lab <- "1.5-2C"
 
 if (t_lab %in% "<1.5C")  temp_cats <- c("1.5C low overshoot", "Below 1.5C")
 if (t_lab %in% "<2C")    temp_cats <- c("1.5C low overshoot", "Below 1.5C", "1.5C high overshoot", "Lower 2C", "Higher 2C")
 if (t_lab %in% "1.5-2C") temp_cats <- c("1.5C high overshoot", "Lower 2C", "Higher 2C")
 
-#reg <- "World"
+reg <- "World"
 #reg <- "R5OECD90+EU"
 #reg <- "R5MAF"
-reg <- "R5ASIA"
+#reg <- "R5ASIA"
 #reg <- "R5LAM"
 #reg <- "R5REF"
 #reg <- "R5ROWO"
