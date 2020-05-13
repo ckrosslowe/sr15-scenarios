@@ -48,6 +48,7 @@ ms_exclude <- c("MESSAGEix-GLOBIOM 1.0 | LowEnergyDemand",
 
 # Create run filtering function
 source("filter_runs.R")
+source("filter_runs_avg.R")
 
 # ==== READ data ====
 # Read metadata
@@ -58,7 +59,7 @@ meta <- read_excel("data/sr15_metadata_indicators_r2.0.xlsx", sheet="meta") %>%
 runs_clean <- read.csv("data/runs_clean.csv", header=T, stringsAsFactors = F) %>%
   #left_join(meta[c("mod_scen", "category")], by="mod_scen") %>%
   mutate(cat2 = ifelse(category %in% c("1.5C low overshoot", "Below 1.5C"), "<1.5C",
-                       ifelse(category %in% c("1.5C high overshoot", "Lower 2C", "Higher 2C"), "1.5-2C", category)),
+                       ifelse(category %in% c("1.5C high overshoot", "Lower 2C"), "1.5-2C", category)),
          category = factor(category, ordered=T, levels=c("Below 1.5C", "1.5C low overshoot", "1.5C high overshoot", "Lower 2C", "Higher 2C", "Above 2C", "no-climate-assessment")))
 
 
@@ -141,13 +142,14 @@ sum(runs_test$CO2_frac > 95 & runs_test$CO2_frac < 105, na.rm=T)
 # ==== Filter scenarios ====
 
 # --- Temperature
-t_lab <- "<1.5C"
-#t_lab <- "<2C"
+#t_lab <- "<1.5C"
+t_lab <- "<2C"
 #t_lab <- "1.5-2C"
 
 if (t_lab %in% "<1.5C")  temp_cats <- c("1.5C low overshoot", "Below 1.5C")
-if (t_lab %in% "<2C")    temp_cats <- c("1.5C low overshoot", "Below 1.5C", "1.5C high overshoot", "Lower 2C", "Higher 2C")
-if (t_lab %in% "1.5-2C") temp_cats <- c("1.5C high overshoot", "Lower 2C", "Higher 2C")
+if (t_lab %in% "<2C")    temp_cats <- c("1.5C low overshoot", "Below 1.5C", "1.5C high overshoot", "Lower 2C")
+#if (t_lab %in% "1.5-2C") temp_cats <- c("1.5C high overshoot", "Lower 2C", "Higher 2C")
+if (t_lab %in% "1.5-2C") temp_cats <- c("1.5C high overshoot", "Lower 2C")
 
 reg <- "World"
 #reg <- "R5OECD90+EU"
@@ -159,11 +161,14 @@ reg <- "World"
 
 reg_lab <- regions$reg_lab[regions$region %in% reg]
 
-limits <- c("bio"=110,
-            "beccs"=5500)
+limits <- c("bio"=100,
+            "beccs"=5000,
+            "af"=3600)
 
 runs <- runs_clean %>% filter_runs(temp_cats=temp_cats, reg=reg, limits=limits, ms_exclude=ms_exclude)
-#length(unique(runs$mod_scen))
+#runs <- runs_clean %>% filter_runs_avg(temp_cats=temp_cats, reg=reg, limits=limits, ms_exclude=ms_exclude)
+n_distinct(runs$mod_scen)
+unique(runs$mod_scen)
 
 ######### STATS ############
 
@@ -216,7 +221,6 @@ nuc_sum <- runs %>%
   mutate(Type="Nuclear_scen")
 
 runs_summary <- bind_rows(coal_sum, coal_woCCS_sum, gas_woCCS_sum, renew_sum, nuc_sum)
-
 
 
 # Median elec shares by year
@@ -696,7 +700,6 @@ table(runs$mod_scen[runs$Year==test_yr], useNA="always", is.na(runs$FinalEnergy[
 
 # ---- TOTAL ELECTRICITY ----
 
-
 # Function to plot different summarised technologies
 # fuel_type
 med_plot <- function(fuel_type, yr_max, ttl) {
@@ -974,6 +977,24 @@ combust_ind_CO2 <- runs %>%
   ungroup() %>%
   mutate(Sector="Combustion - Industry")
 
+building_CO2 <- runs %>%
+  filter(Year %in% seq(2020, 2100, 10)) %>%
+  group_by(Year) %>%
+  summarise(med = median(Emissions.CO2.Energy.Demand.ResidentialandCommercial, na.rm=T),
+            q25 = quantile(Emissions.CO2.Energy.Demand.ResidentialandCommercial, 0.25, na.rm=T),
+            q75 = quantile(Emissions.CO2.Energy.Demand.ResidentialandCommercial, 0.75, na.rm=T)) %>%
+  ungroup() %>%
+  mutate(Sector="Buildings")
+
+afofi_CO2 <- runs %>%
+  filter(Year %in% seq(2020, 2100, 10)) %>%
+  group_by(Year) %>%
+  summarise(med = median(Emissions.CO2.Energy.Demand.AFOFI, na.rm=T),
+            q25 = quantile(Emissions.CO2.Energy.Demand.AFOFI, 0.25, na.rm=T),
+            q75 = quantile(Emissions.CO2.Energy.Demand.AFOFI, 0.75, na.rm=T)) %>%
+  ungroup() %>%
+  mutate(Sector="Agriculture")
+
 trans_CO2 <- runs %>%
   filter(Year %in% seq(2020, 2100, 10)) %>%
   group_by(Year) %>%
@@ -1027,7 +1048,7 @@ total_CO2 <- runs %>%
 #  ungroup() %>%
 #  mutate(Type="My total")
 
-CO2_sectors <- bind_rows(elec_CO2, combust_ind_CO2, trans_CO2, afolu_CO2, industry_CO2)
+CO2_sectors <- bind_rows(elec_CO2, combust_ind_CO2, building_CO2, trans_CO2, afolu_CO2, industry_CO2, afofi_CO2)
 
 png(file=paste0("plots/sector_emissions_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=1400,height=900,res=200,type='cairo')
 ggplot(CO2_sectors, aes(x=Year, y=med, group=Sector)) +
@@ -1041,8 +1062,55 @@ ggplot(CO2_sectors, aes(x=Year, y=med, group=Sector)) +
   coord_cartesian(ylim=c(-6000, 13500))
 dev.off()
 
+# ---- Sector emissions reductions ----
+png(file=paste0("plots/emissions_co2_reduction_by_model_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=1200,height=1000,res=200,type='cairo')
+runs %>% select(mod_scen, 
+                Year,
+                Emissions.CO2.Energy.Supply.Electricity,
+                Emissions.CO2.Energy.Demand.Industry,
+                Emissions.CO2.Energy.Demand.Transportation,
+                Emissions.CO2.AFOLU,
+                Emissions.CO2.IndustrialProcesses,
+                Emissions.CO2.Energy.Demand.ResidentialandCommercial,
+                Emissions.CO2.Energy.Demand.AFOFI,
+                Emissions.CO2.Energy.Demand.OtherSector) %>%
+  filter(Year %in% c(2020, 2030)) %>%
+  rename(Electricity = Emissions.CO2.Energy.Supply.Electricity,
+         Industry.Combustion = Emissions.CO2.Energy.Demand.Industry,
+         Transport = Emissions.CO2.Energy.Demand.Transportation,
+         AFOLU = Emissions.CO2.AFOLU,
+         Industry.Process = Emissions.CO2.IndustrialProcesses,
+         Buildings = Emissions.CO2.Energy.Demand.ResidentialandCommercial,
+         Agriculture = Emissions.CO2.Energy.Demand.AFOFI,
+         Other = Emissions.CO2.Energy.Demand.OtherSector) %>%
+  pivot_longer(Electricity:Other, names_to = "Sector", values_to="Emissions.CO2") %>%
+  pivot_wider(names_from = Year, values_from = Emissions.CO2, names_prefix = "y") %>%
+  mutate(diff = y2020-y2030) %>%
+  mutate(mod_scen = str_replace(mod_scen, "\\|", "\n")) %>%
+  ggplot(aes(x=mod_scen, y=diff/1000, fill=factor(Sector, levels=c("Other", "Industry.Process", "Transport", "Buildings", "Industry.Combustion", "AFOLU", "Electricity")))) +
+  geom_bar(stat='identity', position='stack') +
+  labs(y="Emissions reduction (GtCO2)", x="", fill="Sector",
+       title="CO2 emissions reduction by sector, 2020-2030", 
+       subtitle=paste0(reg_lab,", ",t_lab)) +
+  theme(axis.text.x = element_text(angle=45, hjust=1)) +
+  scale_fill_viridis(discrete=T)
+dev.off()
+
 ######### MULTI-SAMPLE PLOTS #########
 
+# ---- Electricity demand ----
+#SecondaryEnergy|Electricity
+png(file=paste0("plots/elec_demand_",reg_lab,".png"),width=1200,height=800,res=200,type='cairo')
+runs %>% select(mod_scen, Year, cat2, SecondaryEnergy.Electricity) %>%
+  filter(!is.na(SecondaryEnergy.Electricity)) %>%
+  ggplot(aes(x=Year, y=SecondaryEnergy.Electricity, group=mod_scen)) +
+  geom_line(aes(colour=cat2), size=1, alpha=0.6) +
+  labs(x="", y="Demand (EJ)", title="Electricity demand", colour="Warming", 
+       subtitle=reg_lab) +
+  coord_cartesian(xlim=c(2020,2100), ylim=c(0, 700)) +
+  scale_colour_viridis(discrete=T)
+#colorRampPalette()
+dev.off()
 # ----- Electricity emissions ----
 raw_runs <- runs %>%
   select(Year,
