@@ -142,8 +142,8 @@ sum(runs_test$CO2_frac > 95 & runs_test$CO2_frac < 105, na.rm=T)
 # ==== Filter scenarios ====
 
 # --- Temperature
-#t_lab <- "<1.5C"
-t_lab <- "<2C"
+t_lab <- "<1.5C"
+#t_lab <- "<2C"
 #t_lab <- "1.5-2C"
 
 if (t_lab %in% "<1.5C")  temp_cats <- c("1.5C low overshoot", "Below 1.5C")
@@ -151,10 +151,10 @@ if (t_lab %in% "<2C")    temp_cats <- c("1.5C low overshoot", "Below 1.5C", "1.5
 #if (t_lab %in% "1.5-2C") temp_cats <- c("1.5C high overshoot", "Lower 2C", "Higher 2C")
 if (t_lab %in% "1.5-2C") temp_cats <- c("1.5C high overshoot", "Lower 2C")
 
-reg <- "World"
+#reg <- "World"
 #reg <- "R5OECD90+EU"
 #reg <- "R5MAF"
-#reg <- "R5ASIA"
+reg <- "R5ASIA"
 #reg <- "R5LAM"
 #reg <- "R5REF"
 #reg <- "R5ROWO"
@@ -1066,15 +1066,19 @@ dev.off()
 png(file=paste0("plots/emissions_co2_reduction_by_model_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=1200,height=1000,res=200,type='cairo')
 runs %>% select(mod_scen, 
                 Year,
+                Emissions.CO2,
                 Emissions.CO2.Energy.Supply.Electricity,
                 Emissions.CO2.Energy.Demand.Industry,
                 Emissions.CO2.Energy.Demand.Transportation,
                 Emissions.CO2.AFOLU,
                 Emissions.CO2.IndustrialProcesses,
                 Emissions.CO2.Energy.Demand.ResidentialandCommercial,
-                Emissions.CO2.Energy.Demand.AFOFI,
-                Emissions.CO2.Energy.Demand.OtherSector) %>%
+                Emissions.CO2.Energy.Demand.AFOFI) %>%
   filter(Year %in% c(2020, 2030)) %>%
+  #replace(is.na(.), 0) %>% # replace missing emissions with zero, for sums
+  mutate(Emissions.CO2.Counted = rowSums(select(.,Emissions.CO2.Energy.Supply.Electricity:Emissions.CO2.Energy.Demand.AFOFI), na.rm=T)) %>%
+  mutate(Emissions.CO2.Other = Emissions.CO2 - Emissions.CO2.Counted) %>%
+  select(-Emissions.CO2, -Emissions.CO2.Counted) %>%
   rename(Electricity = Emissions.CO2.Energy.Supply.Electricity,
          Industry.Combustion = Emissions.CO2.Energy.Demand.Industry,
          Transport = Emissions.CO2.Energy.Demand.Transportation,
@@ -1082,7 +1086,7 @@ runs %>% select(mod_scen,
          Industry.Process = Emissions.CO2.IndustrialProcesses,
          Buildings = Emissions.CO2.Energy.Demand.ResidentialandCommercial,
          Agriculture = Emissions.CO2.Energy.Demand.AFOFI,
-         Other = Emissions.CO2.Energy.Demand.OtherSector) %>%
+         Other = Emissions.CO2.Other) %>%
   pivot_longer(Electricity:Other, names_to = "Sector", values_to="Emissions.CO2") %>%
   pivot_wider(names_from = Year, values_from = Emissions.CO2, names_prefix = "y") %>%
   mutate(diff = y2020-y2030) %>%
