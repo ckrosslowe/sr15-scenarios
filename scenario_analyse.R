@@ -34,7 +34,8 @@ fuel_cols <- c("Wind"="#FF624E", "#E41A1C", # Red - Wind
                "Other fossil"="#B76022", #8B4513 # Brown - Other fossil
                "Other renewable"="#F98BC5", # Pink - Other renewables
                "Hydro"="#6CE3E5", #00CED1  # Dark turquoise - Hydro
-               "Coal"="#2F4F4F")
+               "Coal"="#2F4F4F",
+               "Gas.wCCS"="#77bbd1")
 
 # Variables explained here https://data.ene.iiasa.ac.at/iamc-1.5c-explorer/#/docs
 
@@ -142,9 +143,9 @@ sum(runs_test$CO2_frac > 95 & runs_test$CO2_frac < 105, na.rm=T)
 # ==== Filter scenarios ====
 
 # --- Temperature
-t_lab <- "<1.5C"
+#t_lab <- "<1.5C"
 #t_lab <- "<2C"
-#t_lab <- "1.5-2C"
+t_lab <- "1.5-2C"
 
 if (t_lab %in% "<1.5C")  temp_cats <- c("1.5C low overshoot", "Below 1.5C")
 if (t_lab %in% "<2C")    temp_cats <- c("1.5C low overshoot", "Below 1.5C", "1.5C high overshoot", "Lower 2C")
@@ -152,9 +153,9 @@ if (t_lab %in% "<2C")    temp_cats <- c("1.5C low overshoot", "Below 1.5C", "1.5
 if (t_lab %in% "1.5-2C") temp_cats <- c("1.5C high overshoot", "Lower 2C")
 
 #reg <- "World"
-#reg <- "R5OECD90+EU"
+reg <- "R5OECD90+EU"
 #reg <- "R5MAF"
-reg <- "R5ASIA"
+#reg <- "R5ASIA"
 #reg <- "R5LAM"
 #reg <- "R5REF"
 #reg <- "R5ROWO"
@@ -238,7 +239,7 @@ med_share
 
 ######### ONE SAMPLE PLOTS ############
 
-year_range <- c(2020, 2100)
+year_range <- c(2020, 2050)
 
 # ---- Electricity Variables REFERENCE: ----
 #SecondaryEnergy.Electricity.#SecondaryEnergy.Electricity.Biomass
@@ -274,7 +275,7 @@ year_range <- c(2020, 2100)
 table(runs$mod_scen, useNA="always", is.na(runs$SecondaryEnergy.Electricity))
 
 #SecondaryEnergy|Electricity
-png(file=paste0("plots/elec_demand_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=600,height=400,res=150,type='cairo')
+png(file=paste0("plots/elec_demand_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=1200,height=800,res=220,type='cairo')
 ggplot(runs[!is.na(runs$SecondaryEnergy.Electricity),], 
        aes(x=Year, y=SecondaryEnergy.Electricity, group=mod_scen)) +
   geom_line(aes(color=mod_scen), size=1) +
@@ -286,13 +287,13 @@ dev.off()
 
 # Electrification
 # Electricity as a % of final energy
-png(file=paste0("plots/electrification_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=600,height=400,res=150,type='cairo')
+png(file=paste0("plots/electrification_2020-2030_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=1200,height=800,res=220,type='cairo')
 ggplot(runs[!is.na(runs$SecondaryEnergy.Electricity) & !is.na(runs$FinalEnergy),], 
        aes(x=Year, y=100*SecondaryEnergy.Electricity/FinalEnergy, group=mod_scen)) +
-  geom_line(aes(color=mod_scen), size=1) +
+  geom_line(aes(color=cat2), size=1) +
   labs(x="", y="Electricity % of final energy", title="Electrification", subtitle=paste0(t_lab, ", ", reg_lab)) +
   theme(legend.position = "none") +
-  lims(y=c(0,100), x=year_range) +
+  lims(y=c(0,40), x=year_range) +
   scale_color_viridis(discrete=T)
 dev.off()
 
@@ -1063,8 +1064,19 @@ ggplot(CO2_sectors, aes(x=Year, y=med, group=Sector)) +
 dev.off()
 
 # ---- Sector emissions reductions ----
-png(file=paste0("plots/emissions_co2_reduction_by_model_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=1200,height=1000,res=200,type='cairo')
-runs %>% select(mod_scen, 
+
+# Something here to calculate the % reduction by each sector
+# .........................
+# Emissions by model
+CO2_diff_tot <- runs %>% select(mod_scen, 
+                                    Year,
+                                    Emissions.CO2) %>%
+  filter(Year %in% c(2020, 2030)) %>%
+  pivot_wider(names_from = Year, values_from = Emissions.CO2, names_prefix = "y") %>%
+  mutate(diff_tot = y2030-y2020)
+
+# Emissions difference by model by sector
+CO2_diff <- runs %>% select(mod_scen, 
                 Year,
                 Emissions.CO2,
                 Emissions.CO2.Energy.Supply.Electricity,
@@ -1072,11 +1084,10 @@ runs %>% select(mod_scen,
                 Emissions.CO2.Energy.Demand.Transportation,
                 Emissions.CO2.AFOLU,
                 Emissions.CO2.IndustrialProcesses,
-                Emissions.CO2.Energy.Demand.ResidentialandCommercial,
-                Emissions.CO2.Energy.Demand.AFOFI) %>%
+                Emissions.CO2.Energy.Demand.ResidentialandCommercial) %>%
   filter(Year %in% c(2020, 2030)) %>%
   #replace(is.na(.), 0) %>% # replace missing emissions with zero, for sums
-  mutate(Emissions.CO2.Counted = rowSums(select(.,Emissions.CO2.Energy.Supply.Electricity:Emissions.CO2.Energy.Demand.AFOFI), na.rm=T)) %>%
+  mutate(Emissions.CO2.Counted = rowSums(select(.,Emissions.CO2.Energy.Supply.Electricity:Emissions.CO2.Energy.Demand.ResidentialandCommercial), na.rm=T)) %>%
   mutate(Emissions.CO2.Other = Emissions.CO2 - Emissions.CO2.Counted) %>%
   select(-Emissions.CO2, -Emissions.CO2.Counted) %>%
   rename(Electricity = Emissions.CO2.Energy.Supply.Electricity,
@@ -1085,19 +1096,63 @@ runs %>% select(mod_scen,
          AFOLU = Emissions.CO2.AFOLU,
          Industry.Process = Emissions.CO2.IndustrialProcesses,
          Buildings = Emissions.CO2.Energy.Demand.ResidentialandCommercial,
-         Agriculture = Emissions.CO2.Energy.Demand.AFOFI,
+         #Agriculture = Emissions.CO2.Energy.Demand.AFOFI,
          Other = Emissions.CO2.Other) %>%
   pivot_longer(Electricity:Other, names_to = "Sector", values_to="Emissions.CO2") %>%
   pivot_wider(names_from = Year, values_from = Emissions.CO2, names_prefix = "y") %>%
-  mutate(diff = y2020-y2030) %>%
+  mutate(diff = y2030-y2020) %>%
+  left_join(CO2_diff_tot[c("mod_scen", "diff_tot")], by="mod_scen") %>%
+  mutate(diff_pc = round(100*(diff/diff_tot),1))
+  
+
+CO2_diff[CO2_diff$Sector %in% "Electricity",]
+median(CO2_diff$diff_pc[CO2_diff$Sector %in% "Electricity"])
+mean(CO2_diff$diff_pc[CO2_diff$Sector %in% "Electricity"])
+
+
+png(file=paste0("plots/emissions_co2_reduction_by_model_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=1400,height=1200,res=200,type='cairo')
+CO2_diff %>%
   mutate(mod_scen = str_replace(mod_scen, "\\|", "\n")) %>%
   ggplot(aes(x=mod_scen, y=diff/1000, fill=factor(Sector, levels=c("Other", "Industry.Process", "Transport", "Buildings", "Industry.Combustion", "AFOLU", "Electricity")))) +
   geom_bar(stat='identity', position='stack') +
-  labs(y="Emissions reduction (GtCO2)", x="", fill="Sector",
-       title="CO2 emissions reduction by sector, 2020-2030", 
+  labs(y="Emissions (GtCO2)", x="", fill="Sector",
+       title="Change in CO2 emissions by sector, 2020-2030", 
+       subtitle=paste0(reg_lab,", ",t_lab)) +
+  theme(axis.text.x = element_text(angle=55, hjust=1, size=6)) +
+  scale_fill_viridis(discrete=T)
+dev.off()
+
+# ---- TWh changes by fuel ----
+png(file=paste0("plots/elec_change_2020-2030_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=1400,height=1000,res=200,type='cairo')
+runs %>% select(mod_scen, 
+                Year,
+                SecondaryEnergy.Electricity.Coal,
+                SecondaryEnergy.Electricity.Gas,
+                SecondaryEnergy.Electricity.Wind,
+                SecondaryEnergy.Electricity.Solar,
+                SecondaryEnergy.Electricity.Biomass,
+                SecondaryEnergy.Electricity.Nuclear) %>%
+                #SecondaryEnergy.Electricity.Gas.wCCS) %>%
+  filter(Year %in% c(2020, 2030)) %>%
+  #replace(is.na(.), 0) %>% # replace missing emissions with zero, for sums
+  rename(Coal = SecondaryEnergy.Electricity.Coal,
+         Gas = SecondaryEnergy.Electricity.Gas,
+         Wind = SecondaryEnergy.Electricity.Wind,
+         Solar = SecondaryEnergy.Electricity.Solar,
+         Biomass = SecondaryEnergy.Electricity.Biomass,
+         Nuclear = SecondaryEnergy.Electricity.Nuclear) %>%
+         #Gas.wCCS = SecondaryEnergy.Electricity.Gas.wCCS) %>%
+  pivot_longer(Coal:Nuclear, names_to = "Fuel", values_to="EJ") %>%
+  pivot_wider(names_from = Year, values_from = EJ, names_prefix = "y") %>%
+  mutate(diff20_30 = y2030-y2020) %>%
+  mutate(mod_scen = str_replace(mod_scen, "\\|", "\n")) %>%
+  ggplot(aes(x=mod_scen, y=diff20_30*278, fill=Fuel)) + #levels=c("Other", "Industry.Process", "Transport", "Buildings", "Industry.Combustion", "AFOLU", "Electricity")))) +
+  geom_bar(stat='identity', position='stack') +
+  labs(y="2030-2020 (TWh)", x="", fill="Fuel",
+       title="Difference in electricity production by fuel, 2020-2030", 
        subtitle=paste0(reg_lab,", ",t_lab)) +
   theme(axis.text.x = element_text(angle=45, hjust=1)) +
-  scale_fill_viridis(discrete=T)
+  scale_fill_manual(values=fuel_cols)
 dev.off()
 
 ######### MULTI-SAMPLE PLOTS #########
