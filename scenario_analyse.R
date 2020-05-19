@@ -4,7 +4,7 @@ library(readxl)
 library(viridis)
 library(cowplot)
 #library(plotly)
-library(gganimate)
+#library(gganimate)
 
 # ggplot theme
 theme_set(
@@ -35,7 +35,7 @@ fuel_cols <- c("Wind"="#FF624E", "#E41A1C", # Red - Wind
                "Other renewable"="#F98BC5", # Pink - Other renewables
                "Hydro"="#6CE3E5", #00CED1  # Dark turquoise - Hydro
                "Coal"="#2F4F4F",
-               "Gas.wCCS"="#77bbd1")
+               "Other"="#77bbd1")
 
 # Variables explained here https://data.ene.iiasa.ac.at/iamc-1.5c-explorer/#/docs
 
@@ -50,6 +50,7 @@ ms_exclude <- c("MESSAGEix-GLOBIOM 1.0 | LowEnergyDemand",
 # Create run filtering function
 source("filter_runs.R")
 source("filter_runs_avg.R")
+source("filter_runs_comp.R")
 
 # ==== READ data ====
 # Read metadata
@@ -144,8 +145,8 @@ sum(runs_test$CO2_frac > 95 & runs_test$CO2_frac < 105, na.rm=T)
 
 # --- Temperature
 #t_lab <- "<1.5C"
-#t_lab <- "<2C"
-t_lab <- "1.5-2C"
+t_lab <- "<2C"
+#t_lab <- "1.5-2C"
 
 if (t_lab %in% "<1.5C")  temp_cats <- c("1.5C low overshoot", "Below 1.5C")
 if (t_lab %in% "<2C")    temp_cats <- c("1.5C low overshoot", "Below 1.5C", "1.5C high overshoot", "Lower 2C")
@@ -153,9 +154,9 @@ if (t_lab %in% "<2C")    temp_cats <- c("1.5C low overshoot", "Below 1.5C", "1.5
 if (t_lab %in% "1.5-2C") temp_cats <- c("1.5C high overshoot", "Lower 2C")
 
 #reg <- "World"
-reg <- "R5OECD90+EU"
+#reg <- "R5OECD90+EU"
 #reg <- "R5MAF"
-#reg <- "R5ASIA"
+reg <- "R5ASIA"
 #reg <- "R5LAM"
 #reg <- "R5REF"
 #reg <- "R5ROWO"
@@ -170,6 +171,11 @@ runs <- runs_clean %>% filter_runs(temp_cats=temp_cats, reg=reg, limits=limits, 
 #runs <- runs_clean %>% filter_runs_avg(temp_cats=temp_cats, reg=reg, limits=limits, ms_exclude=ms_exclude)
 n_distinct(runs$mod_scen)
 unique(runs$mod_scen)
+
+# Alternative dataset with all regions included ('comp' = complete)
+runs_comp <- runs_clean %>% filter_runs_comp(temp_cats=temp_cats, limits=limits, ms_exclude=ms_exclude)
+n_distinct(runs_comp$mod_scen)
+unique(runs_comp$mod_scen)
 
 ######### STATS ############
 
@@ -1155,6 +1161,68 @@ runs %>% select(mod_scen,
   scale_fill_manual(values=fuel_cols)
 dev.off()
 
+# ---- TWh changes ----
+#png(file=paste0("plots/elec_change_2020-2030_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=1400,height=1000,res=200,type='cairo')
+twh_diff_coal_other <- runs %>% select(mod_scen, 
+                                       Year,
+                                       SecondaryEnergy.Electricity,
+                                       SecondaryEnergy.Electricity.Coal) %>%
+  #SecondaryEnergy.Electricity.Gas.wCCS) %>%
+  filter(Year %in% c(2020, 2030)) %>%
+  #replace(is.na(.), 0) %>% # replace missing emissions with zero, for sums
+  mutate(SecondaryEnergy.Electricity.NotCoal = SecondaryEnergy.Electricity - SecondaryEnergy.Electricity.Coal) %>%
+  select(-SecondaryEnergy.Electricity) %>%
+  rename(Coal = SecondaryEnergy.Electricity.Coal,
+         Other = SecondaryEnergy.Electricity.NotCoal) %>%
+  #Gas.wCCS = SecondaryEnergy.Electricity.Gas.wCCS) %>%
+  pivot_longer(Coal:Other, names_to = "Fuel", values_to="EJ") %>%
+  pivot_wider(names_from = Year, values_from = EJ, names_prefix = "y") %>%
+  mutate(diff20_30 = y2030-y2020,
+         mod_scen = str_replace(mod_scen, "\\|", "\n"))
+
+bars <- tibble(x=twh_diff_coal_other$mod_scen[twh_diff_coal_other$Fuel %in% "Coal"],
+               y=-278*twh_diff_coal_other$diff20_30[twh_diff_coal_other$Fuel %in% "Coal"],
+               ymin=-278*twh_diff_coal_other$diff20_30[twh_diff_coal_other$Fuel %in% "Coal"],
+               ymax=-278*twh_diff_coal_other$diff20_30[twh_diff_coal_other$Fuel %in% "Coal"]
+)
+
+png(file=paste0("plots/elec_change_coal_other_2020-30_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=1400,height=1000,res=200,type='cairo')
+twh_diff_coal_other %>%
+  #mutate(mod_scen = str_replace(mod_scen, "\\|", "\n")) %>%
+  ggplot(aes(x=mod_scen, y=diff20_30*278, fill=Fuel)) + #levels=c("Other", "Industry.Process", "Transport", "Buildings", "Industry.Combustion", "AFOLU", "Electricity")))) +
+  geom_bar(stat='identity', position='stack') +
+  geom_errorbar(data=bars, aes(x=x, ymin=ymin, ymax=ymax), size=1, inherit.aes = F) +
+  labs(y="2030-2020 (TWh)", x="", fill="",
+       title="Changes in electricity generation, 2020-2030", 
+       subtitle="As well as replacing coal, the world must add extra TWh") +
+  theme(axis.text.x = element_text(angle=45, hjust=1)) +
+  scale_fill_manual(values=fuel_cols) +
+  scale_y_continuous(breaks=c(-5000, 0, 5000, 10000, 15000))
+dev.off()
+# ---- Electricity demand changes 2020 / 2030 / 2050 ----
+png(file=paste0("plots/elec_demand_ppchange_2020-30-50_",str_replace(t_lab,"<",""),".png"),width=1400,height=1000,res=220,type='cairo')
+runs_comp %>% 
+  filter(Year %in% c(2020, 2030, 2050)) %>%
+  select(mod_scen, Year, Region, FinalEnergy.Electricity, FinalEnergy) %>%
+  mutate(pc.FinalEnergy.Electricity = 100*FinalEnergy.Electricity/FinalEnergy) %>%
+  select(-FinalEnergy.Electricity, -FinalEnergy) %>%
+  pivot_wider(names_from=Year, values_from = pc.FinalEnergy.Electricity, names_prefix = "y") %>%
+  mutate(diff20.30 = y2030 - y2020, 
+         diff20.50 = y2050 - y2020) %>%
+  select(-y2020, -y2030, -y2050) %>%
+  pivot_longer(diff20.30:diff20.50, names_to="Year", values_to="pc.diff") %>%
+  mutate(Year = ifelse(Year %in% "diff20.30", "2030", 
+                       ifelse(Year %in% "diff20.50", "2050", NA))) %>%
+  ggplot(aes(x=Year, y=pc.diff)) +
+  geom_boxplot(aes(colour=Region)) +
+  labs(title="Percentage point increase in final energy from electricity",
+       subtitle=paste0("With respect to 2020 (",t_lab,")"),
+       x="",
+       y="") +
+  scale_y_continuous(breaks=c(0, 10, 20, 30, 40), labels = c("0%", "10%", "20%", "30%", "40%"))
+dev.off()
+  
+
 ######### MULTI-SAMPLE PLOTS #########
 
 # ---- Electricity demand ----
@@ -1354,7 +1422,7 @@ ggplot(filter(runs_summary, Type2 %in% "Coal", Year %in% c(2010,2011,2012,2013,2
        aes(x=Year)) +
   geom_ribbon(aes(ymin=q25, ymax=q75, group=cat2, fill=cat2), alpha=0.4) +
   geom_line(size=0.8, aes(y=med, group=cat2, colour=cat2)) +
-  geom_point(size=3, aes(y=med, colour=cat2)) +
+  geom_point(aes(y=med, colour=cat2), size=2, alpha=0.7) +
   # Real data
   geom_line(aes(y=Value_TWh/278, color=Type2, group=Type2), size=1) +
   labs(x="",
