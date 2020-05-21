@@ -153,10 +153,10 @@ if (t_lab %in% "<2C")    temp_cats <- c("1.5C low overshoot", "Below 1.5C", "1.5
 #if (t_lab %in% "1.5-2C") temp_cats <- c("1.5C high overshoot", "Lower 2C", "Higher 2C")
 if (t_lab %in% "1.5-2C") temp_cats <- c("1.5C high overshoot", "Lower 2C")
 
-#reg <- "World"
+reg <- "World"
 #reg <- "R5OECD90+EU"
 #reg <- "R5MAF"
-reg <- "R5ASIA"
+#reg <- "R5ASIA"
 #reg <- "R5LAM"
 #reg <- "R5REF"
 #reg <- "R5ROWO"
@@ -179,7 +179,7 @@ unique(runs_comp$mod_scen)
 
 ######### STATS ############
 
-# Summarise runs by technology
+# ---- Summarise runs by technology ----
 coal_sum <- runs %>%
   filter(Year %in% c(2020, 2030, 2040, 2050)) %>%
   group_by(Year) %>%
@@ -229,8 +229,7 @@ nuc_sum <- runs %>%
 
 runs_summary <- bind_rows(coal_sum, coal_woCCS_sum, gas_woCCS_sum, renew_sum, nuc_sum)
 
-
-# Median elec shares by year
+# ---- Median elec shares by year ----
 med_share <- runs %>% select(Year, pc.Renewables, pc.Fossil) %>%
   filter(Year %in% c(2020, 2030, 2050, 2100)) %>%
   group_by(Year) %>%
@@ -243,9 +242,22 @@ med_share <- runs %>% select(Year, pc.Renewables, pc.Fossil) %>%
             )
 med_share
 
+# ---- Time granularity of selected runs ----
+table(runs$mod_scen[!is.na(runs$FinalEnergy)], runs$Year[!is.na(runs$FinalEnergy)])
+table(runs$Year[!is.na(runs$FinalEnergy)])
+
+# ---- Regional breakdown of fuel use in 2019 ----
+ger_pc_regions[ger_pc_regions$Year==2019, c("Region_ipcc", "Biomass", "Coal", "Gas", "Renewables")]
+
+# ---- Median gas generation by region by year ----
+reg_med_gas_woccs <- runs_comp %>% filter(Year %in% c(2020, 2030, 2040, 2050)) %>% 
+  group_by(Region, Year) %>%
+  summarise(med = median(SecondaryEnergy.Electricity.Gas.woCCS))
+
+
 ######### ONE SAMPLE PLOTS ############
 
-year_range <- c(2020, 2050)
+year_range <- c(2020, 2100)
 
 # ---- Electricity Variables REFERENCE: ----
 #SecondaryEnergy.Electricity.#SecondaryEnergy.Electricity.Biomass
@@ -1201,7 +1213,7 @@ twh_diff_coal_other %>%
 dev.off()
 # ---- Electricity demand changes 2020 / 2030 / 2050 ----
 png(file=paste0("plots/elec_demand_ppchange_2020-30-50_",str_replace(t_lab,"<",""),".png"),width=1400,height=1000,res=220,type='cairo')
-runs_comp %>% 
+test <- runs_comp %>% 
   filter(Year %in% c(2020, 2030, 2050)) %>%
   select(mod_scen, Year, Region, FinalEnergy.Electricity, FinalEnergy) %>%
   mutate(pc.FinalEnergy.Electricity = 100*FinalEnergy.Electricity/FinalEnergy) %>%
@@ -1223,6 +1235,23 @@ runs_comp %>%
 dev.off()
   
 
+# ---- Fraction of Gas generation abated ---- 
+png(file=paste0("plots/gas_frac_abated_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=1200,height=1000,res=220,type='cairo')
+runs %>% filter(Year %in% c(2020, 2030, 2040, 2050, 2060, 2070, 2080, 2090, 2100)) %>%
+  select(Year, mod_scen, SecondaryEnergy.Electricity, SecondaryEnergy.Electricity.Gas, SecondaryEnergy.Electricity.Gas.wCCS) %>%
+  mutate(pc.Gas = 100*SecondaryEnergy.Electricity.Gas/SecondaryEnergy.Electricity,
+         pc.Gas.wCCS = 100*SecondaryEnergy.Electricity.Gas.wCCS/SecondaryEnergy.Electricity.Gas) %>%
+  mutate(pc.Gas.wCCS = ifelse(pc.Gas<5, NA, pc.Gas.wCCS)) %>% # make gas abated frac NA if gas provides < a certain % of all electricity
+  select(Year, mod_scen, pc.Gas.wCCS) %>%
+  drop_na() %>%
+  ggplot(aes(x=Year, y=pc.Gas.wCCS, group=mod_scen)) +
+  geom_line(size=0.8, alpha=0.8) +
+  labs(y="", x="", title="Percentage of gas generation abated", 
+       subtitle=paste0("While gas provides >5% of electricity.\nRegion: ",reg_lab,"\n",t_lab)) +
+  theme(text=element_text(size=8),
+        axis.text = element_text(size=8)) +
+  scale_y_continuous(labels=c("0%", "25%", "50%", "75%", "100%"))
+dev.off()
 ######### MULTI-SAMPLE PLOTS #########
 
 # ---- Electricity demand ----
@@ -1257,7 +1286,7 @@ raw_runs %>%
   ggplot(aes(x=Year, y=med)) +
   geom_hline(yintercept = 0, size = 0.8, color = "grey50") +
   #geom_vline(xintercept = 2060, size=0.8,colour="grey20") +
-  geom_line(data=tibble(x=c(2050,2050,2062,2062), y=c(-4000,-6000,-4000,-6000), g=c(1,1,2,2)), aes(x=x, y=y, group=g), size= 0.8) +
+  #geom_line(data=tibble(x=c(2050,2050,2062,2062), y=c(-4000,-6000,-4000,-6000), g=c(1,1,2,2)), aes(x=x, y=y, group=g), size= 0.8) +
   #geom_line(data=raw_runs, aes(x=Year, y=Emissions.CO2.Energy.Supply.Electricity, colour=cat2, group=mod_scen), inherit.aes = F, alpha=0.25,size=0.3) +
   geom_ribbon(aes(ymin=q25, ymax=q75, group=cat2, fill=cat2), alpha=0.3) +
   geom_line(aes(colour=cat2), size=1) +
@@ -1362,6 +1391,80 @@ ks.test(runs$pc.Renewables[runs$Year==yr & runs$pc.Nuclear > q66_nuc], runs$pc.R
 
 
 
+# ---- Biomass changes
+# Biomass only
+bio_changes <- runs %>% 
+  select(mod_scen, 
+         cat2,
+         Year,
+         SecondaryEnergy.Electricity.Biomass.woCCS,
+         SecondaryEnergy.Electricity.Biomass.wCCS) %>%
+  #SecondaryEnergy.Electricity.Gas.wCCS) %>%
+  filter(Year %in% c(2020, 2030, 2050)) %>%
+  #replace(is.na(.), 0) %>% # replace missing emissions with zero, for sums
+  rename(Abated = SecondaryEnergy.Electricity.Biomass.wCCS,
+         Unabated = SecondaryEnergy.Electricity.Biomass.woCCS) %>%
+  #Gas.wCCS = SecondaryEnergy.Electricity.Gas.wCCS) %>%
+  pivot_longer(Abated:Unabated, names_to = "Fuel", values_to="EJ") %>%
+  pivot_wider(names_from = Year, values_from = EJ, names_prefix = "y") %>%
+  mutate(diff20_30 = y2030-y2020,
+         diff20_50 = y2050-y2020)
+
+bio_chng_2030_1p5 <- bio_changes %>%
+  filter(cat2 %in% "<1.5C") %>%
+  mutate(mod_scen = str_replace(mod_scen, "\\|", "\n")) %>%
+  ggplot(aes(x=mod_scen, y=diff20_30*278, fill=Fuel)) + #levels=c("Other", "Industry.Process", "Transport", "Buildings", "Industry.Combustion", "AFOLU", "Electricity")))) +
+  geom_bar(stat='identity', position='stack') +
+  labs(y="", x="", fill="",
+       title="") +
+       #subtitle=paste0(reg_lab,", ",t_lab)) +
+  theme(axis.text.x = element_blank(),
+        plot.margin = margin(20, 5.5, 5.5, 50)) + #trbl
+  guides(fill=F)
+
+bio_chng_2030_2 <- bio_changes %>%
+  filter(cat2 %in% "1.5-2C") %>%
+  mutate(mod_scen = str_replace(mod_scen, "\\|", "\n")) %>%
+  ggplot(aes(x=mod_scen, y=diff20_30*278, fill=Fuel)) + #levels=c("Other", "Industry.Process", "Transport", "Buildings", "Industry.Combustion", "AFOLU", "Electricity")))) +
+  geom_bar(stat='identity', position='stack') +
+  labs(y="", x="", fill="",
+       title="") +
+  #subtitle=paste0(reg_lab,", ",t_lab)) +
+  theme(axis.text.x = element_blank(),
+        plot.margin = margin(20, 5.5, 5.5, 5.5)) + #trbl)
+
+bio_chng_2050_1p5 <- bio_changes %>%
+  filter(cat2 %in% "<1.5C") %>%
+  mutate(mod_scen = str_replace(mod_scen, "\\|", "\n")) %>%
+  ggplot(aes(x=mod_scen, y=diff20_50*278, fill=Fuel)) + #levels=c("Other", "Industry.Process", "Transport", "Buildings", "Industry.Combustion", "AFOLU", "Electricity")))) +
+  geom_bar(stat='identity', position='stack') +
+  labs(y="", x="", fill="",
+       title="") +
+  #subtitle=paste0(reg_lab,", ",t_lab)) +
+  theme(axis.text.x = element_blank(),
+        plot.margin = margin(0, 5.5, 5.5, 50)) + #trbl
+  guides(fill=F)
+
+bio_chng_2050_2 <- bio_changes %>%
+  filter(cat2 %in% "1.5-2C") %>%
+  mutate(mod_scen = str_replace(mod_scen, "\\|", "\n")) %>%
+  ggplot(aes(x=mod_scen, y=diff20_50*278, fill=Fuel)) + #levels=c("Other", "Industry.Process", "Transport", "Buildings", "Industry.Combustion", "AFOLU", "Electricity")))) +
+  geom_bar(stat='identity', position='stack') +
+  labs(y="", x="", fill="",
+       title="") +
+  #subtitle=paste0(reg_lab,", ",t_lab)) +
+  theme(axis.text.x = element_blank(),
+        plot.margin = margin(0, 5.5, 5.5, 5.5)) + #trbl)
+
+png(file=paste0("plots/biomass_growth_",reg_lab,".png"),width=1200,height=1000,res=200,type='cairo')
+plot_grid(bio_chng_2030_1p5, bio_chng_2030_2, bio_chng_2050_1p5, bio_chng_2050_2, 
+          nrow=2, labels=c("<1.5C", "<2C", "2030", "2050"), rel_widths=c(1,1.5),
+          label_x = c(0.5, 0.4, 0.0, -0.66), 
+          label_y = c(1.0, 1.0, 1.65, 0.6)
+)
+
+dev.off()
+
 # ---- 1.5C vs 2C tech timelines ----
 
 # See 2019 regional distribution
@@ -1422,12 +1525,12 @@ ggplot(filter(runs_summary, Type2 %in% "Coal", Year %in% c(2010,2011,2012,2013,2
        aes(x=Year)) +
   geom_ribbon(aes(ymin=q25, ymax=q75, group=cat2, fill=cat2), alpha=0.4) +
   geom_line(size=0.8, aes(y=med, group=cat2, colour=cat2)) +
-  geom_point(aes(y=med, colour=cat2), size=2, alpha=0.7) +
+  geom_point(aes(y=med, colour=cat2), size=2) +
   # Real data
   geom_line(aes(y=Value_TWh/278, color=Type2, group=Type2), size=1) +
   labs(x="",
        y="Electricity production (EJ)",
-       title="Unabated coal electricity in different warming scenarios",
+       title="Unabated coal electricity in different pathways",
        subtitle=paste0("Region: ", reg_lab),
        colour="",
        fill="") +
@@ -1441,14 +1544,15 @@ dev.off()
 png(file=paste0("plots/gas_woCCS_comp_",reg_lab,".png"),width=1200,height=800,res=200,type='cairo')
 ggplot(filter(runs_summary, Type2 %in% "Gas", Year %in% c(2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2030,2040,2050)), 
        aes(x=Year)) +
+  geom_line(data=filter(runs, !is.na(Year), Year>2019, !is.na(SecondaryEnergy.Electricity.Gas.woCCS)), aes(x=Year, y=SecondaryEnergy.Electricity.Gas.woCCS, group=mod_scen), colour="grey20", size=0.4, alpha=0.2, inherit.aes = F) +
   geom_ribbon(aes(ymin=q25, ymax=q75, group=cat2, fill=cat2), alpha=0.4) +
   geom_line(size=0.8, aes(y=med, group=cat2, colour=cat2)) +
-  geom_point(size=3, aes(y=med, colour=cat2)) +
+  geom_point(size=2, aes(y=med, colour=cat2)) +
   # Real data
   geom_line(aes(y=Value_TWh/278, color=Type2, group=Type2), size=1) +
   labs(x="",
        y="Electricity production (EJ)",
-       title="Unabated gas electricity in different warming scenarios",
+       title="Unabated gas electricity in different pathways",
        subtitle=paste0("Region: ", reg_lab),
        colour="",
        fill="") +
@@ -1456,6 +1560,11 @@ ggplot(filter(runs_summary, Type2 %in% "Gas", Year %in% c(2010,2011,2012,2013,20
   scale_color_manual(values=c("Gas"="deepskyblue3", "<1.5C"="skyblue3", "1.5-2C"="Coral1"),
                      labels=c("Gas"="Historic\nproduction")) +
   scale_fill_manual(values=c("<1.5C"="skyblue3", "1.5-2C"="Coral1")) +
+  theme(panel.grid.major.y = element_blank(),
+        axis.ticks.y = element_line(size=0.6, colour="grey20"),
+        axis.ticks.length.y = unit(0.4,"cm"),
+        axis.text.y = element_text(vjust=0, hjust=1),
+        axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0))) +
   guides(fill=F)
 dev.off()
 
@@ -1549,6 +1658,74 @@ dev.off()
   #labs(y="Emissions from electricity (Mt CO2)", x="") +
   #scale_colour_viridis(discrete=T)
 
+# ---- Gas CCS ----
+# Line version
+png(file=paste0("plots/gas_frac_abated_",reg_lab,".png"),width=1200,height=1000,res=220,type='cairo')
+runs %>% filter(Year %in% c(2020, 2030, 2040, 2050, 2060, 2070, 2080, 2090, 2100)) %>%
+  select(Year, cat2, mod_scen, SecondaryEnergy.Electricity, SecondaryEnergy.Electricity.Gas, SecondaryEnergy.Electricity.Gas.wCCS) %>%
+  mutate(pc.Gas = 100*SecondaryEnergy.Electricity.Gas/SecondaryEnergy.Electricity,
+         pc.Gas.wCCS = 100*SecondaryEnergy.Electricity.Gas.wCCS/SecondaryEnergy.Electricity.Gas) %>%
+  mutate(pc.Gas.wCCS = ifelse(pc.Gas<5, NA, pc.Gas.wCCS)) %>% # make gas abated frac NA if gas provides < a certain % of all electricity
+  select(Year, cat2, mod_scen, pc.Gas.wCCS) %>%
+  drop_na() %>%
+  ggplot(aes(x=Year, y=pc.Gas.wCCS, group=mod_scen)) +
+  geom_line(aes(colour=cat2), size=0.8, alpha=0.8) +
+  labs(y="", x="", title="Percentage of gas generation abated", 
+       subtitle=paste0("While gas provides >5% of electricity.\nRegion: ",reg_lab,"\n",t_lab)) +
+  theme(text=element_text(size=8),
+        axis.text = element_text(size=8)) +
+  scale_y_continuous(labels=c("0%", "25%", "50%", "75%", "100%"))
+dev.off()
+
+# Boxplot version
+runs %>% filter(Year %in% c(2020, 2030, 2040, 2050, 2060, 2070, 2080, 2090, 2100)) %>%
+  select(Year, cat2, mod_scen, SecondaryEnergy.Electricity, SecondaryEnergy.Electricity.Gas, SecondaryEnergy.Electricity.Gas.wCCS) %>%
+  mutate(pc.Gas = 100*SecondaryEnergy.Electricity.Gas/SecondaryEnergy.Electricity,
+         pc.Gas.wCCS = 100*SecondaryEnergy.Electricity.Gas.wCCS/SecondaryEnergy.Electricity.Gas) %>%
+  mutate(pc.Gas.wCCS = ifelse(pc.Gas<5, NA, pc.Gas.wCCS)) %>% # make gas abated frac NA if gas provides < a certain % of all electricity
+  select(Year, cat2, mod_scen, pc.Gas.wCCS) %>%
+  #filter(Year %in% c(2030, 2040)) %>%
+  drop_na() %>%
+  ggplot(aes(x=factor(Year), y=pc.Gas.wCCS, colour=factor(cat2))) +
+  geom_boxplot() +
+  #geom_boxplot(outlier.shape = NA) + geom_jitter(width = 0.1) +
+  labs(y="", x="", title="Percentage of gas generation abated", 
+       subtitle=paste0("While gas provides >5% of electricity.\nRegion: ",reg_lab,"\n",t_lab)) +
+  theme(text=element_text(size=8),
+        axis.text = element_text(size=8)) +
+  scale_y_continuous(labels=c("0%", "25%", "50%", "75%", "100%"))
+
+# median + IQR version
+gas_pc_wCCS <- runs %>% filter(Year %in% c(2020, 2030, 2040, 2050, 2060, 2070, 2080, 2090, 2100)) %>%
+  select(Year, cat2, mod_scen, SecondaryEnergy.Electricity, SecondaryEnergy.Electricity.Gas, SecondaryEnergy.Electricity.Gas.wCCS) %>%
+  mutate(pc.Gas = 100*SecondaryEnergy.Electricity.Gas/SecondaryEnergy.Electricity,
+         pc.Gas.wCCS = 100*SecondaryEnergy.Electricity.Gas.wCCS/SecondaryEnergy.Electricity.Gas) %>%
+  mutate(pc.Gas.wCCS = ifelse(pc.Gas<5, NA, pc.Gas.wCCS)) %>% # make gas abated frac NA if gas provides < a certain % of all electricity
+  select(Year, cat2, mod_scen, pc.Gas.wCCS) %>%
+  #filter(Year %in% c(2030, 2040)) %>%
+  drop_na() %>%
+  rename(Pathway = cat2) %>%
+  group_by(Year, Pathway) %>%
+  summarise(med=median(pc.Gas.wCCS),
+            q25=quantile(pc.Gas.wCCS, 0.25),
+            q75=quantile(pc.Gas.wCCS, 0.75))
+
+png(file=paste0("plots/gas_frac_abated_med_",reg_lab,".png"),width=1200,height=800,res=220,type='cairo')
+ggplot(filter(gas_pc_wCCS, !(Year>2060 & Pathway=="<1.5C")), 
+       aes(x=Year)) +
+  geom_ribbon(aes(ymin=q25, ymax=q75, group=Pathway, fill=Pathway), alpha=0.3) +
+  geom_line(aes(y=med, group=Pathway, colour=Pathway), size=1) +
+  #geom_boxplot(outlier.shape = NA) + geom_jitter(width = 0.1) +
+  labs(y="", x="", title="Percentage of gas generation abated", 
+       subtitle=paste0("Region: ",reg_lab,"\n",t_lab)) +
+  theme(text=element_text(size=8),
+        axis.text = element_text(size=8)) +
+  scale_y_continuous(labels=c("0%", "25%", "50%", "75%", "100%")) +
+  scale_x_continuous(breaks=c(2020,2030,2040,2050,2060,2070,2080,2090), limits=c(2020,2090)) +
+  theme(text=element_text(size=8),
+        axis.text = element_text(size=8),
+        legend.text = element_text(size=9)) 
+dev.off()
 ######### OUTLIERS ############
 # ---- High coal ----
 # Histogram of coal in given year <1.5C
