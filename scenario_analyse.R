@@ -4,7 +4,7 @@ library(readxl)
 library(viridis)
 library(cowplot)
 #library(plotly)
-#library(gganimate)
+library(gganimate)
 
 # ggplot theme
 theme_set(
@@ -153,11 +153,11 @@ if (t_lab %in% "<2C")    temp_cats <- c("1.5C low overshoot", "Below 1.5C", "1.5
 #if (t_lab %in% "1.5-2C") temp_cats <- c("1.5C high overshoot", "Lower 2C", "Higher 2C")
 if (t_lab %in% "1.5-2C") temp_cats <- c("1.5C high overshoot", "Lower 2C")
 
-reg <- "World"
+#reg <- "World"
 #reg <- "R5OECD90+EU"
 #reg <- "R5MAF"
 #reg <- "R5ASIA"
-#reg <- "R5LAM"
+reg <- "R5LAM"
 #reg <- "R5REF"
 #reg <- "R5ROWO"
 
@@ -712,6 +712,38 @@ runs %>% filter(Year %in% yr) %>%
         ) 
 dev.off()
 
+# ---- CCS deployment by fuel type INDIVIDUAL MODELS ----
+#yr <- 2100
+ccs_gen <- function(runs, yr) {
+plot <- runs %>% filter(Year %in% yr) %>%
+  select(mod_scen, SecondaryEnergy.Electricity.Biomass.wCCS, SecondaryEnergy.Electricity.Gas.wCCS, SecondaryEnergy.Electricity.Coal.wCCS) %>%
+  pivot_longer(SecondaryEnergy.Electricity.Biomass.wCCS:SecondaryEnergy.Electricity.Coal.wCCS,
+               names_to="Fuel",
+               values_to="Gen",
+               names_prefix="SecondaryEnergy.Electricity.") %>%
+  mutate(Fuel = str_extract(Fuel, "^[A-z]+")) %>%
+  mutate(Fuel = factor(Fuel, ordered=T, levels=c("Biomass", "Gas", "Coal"))) %>%
+  mutate(mod_scen = str_replace(mod_scen, "\\|", "\n")) %>%
+  ggplot(aes(x=mod_scen, y=Gen*278, fill=Fuel)) +
+  geom_bar(stat="identity") +
+  labs(y="TWh", x="", title="") + 
+  lims(y=c(0, 28000)) +
+       #subtitle=paste0("Year: ",yr,", Region: ",reg_lab,", ",t_lab)) +
+  scale_fill_manual(values=fuel_cols) +
+  #scale_y_continuous(breaks=c(0.2, 0.4, 0.6, 0.8, 1.0), labels=c("20%", "40%", "60%", "80%", "100%")) +
+  theme(text = element_text(size=9),
+        axis.text.x = element_blank(),
+  )
+return(plot)
+}
+
+ccs_gen_2030 <- ccs_gen(runs, 2030)
+ccs_gen_2050 <- ccs_gen(runs, 2050)
+ccs_gen_2070 <- ccs_gen(runs, 2070)
+
+png(file=paste0("plots/ccs_fuel_model_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=1200,height=2000,res=200,type='cairo')
+plot_grid(ccs_gen_2030, ccs_gen_2050, ccs_gen_2070, nrow=3, labels=c("2030", "2050", "2070"), label_x=c(0.4, 0.4, 0.4))
+dev.off()
 # ==== Summarising scenarios ====
 test_yr <- 2050
 table(runs$mod_scen[runs$Year==test_yr], useNA="always", is.na(runs$FinalEnergy[runs$Year==test_yr]))
@@ -1213,7 +1245,7 @@ twh_diff_coal_other %>%
 dev.off()
 # ---- Electricity demand changes 2020 / 2030 / 2050 ----
 png(file=paste0("plots/elec_demand_ppchange_2020-30-50_",str_replace(t_lab,"<",""),".png"),width=1400,height=1000,res=220,type='cairo')
-test <- runs_comp %>% 
+runs_comp %>% 
   filter(Year %in% c(2020, 2030, 2050)) %>%
   select(mod_scen, Year, Region, FinalEnergy.Electricity, FinalEnergy) %>%
   mutate(pc.FinalEnergy.Electricity = 100*FinalEnergy.Electricity/FinalEnergy) %>%
@@ -1390,8 +1422,58 @@ ks.test(runs$pc.Renewables[runs$Year==yr & runs$pc.Nuclear < q33_nuc], runs$pc.R
 ks.test(runs$pc.Renewables[runs$Year==yr & runs$pc.Nuclear > q66_nuc], runs$pc.Renewables[runs$Year==yr])
 
 
+# Fossil CCS
+yr <- 2050
+# Low Fossil CCS runs, re-shaped for boxplot
+low_fccs_runs <- runs %>% 
+  filter(Year==yr,
+         pc.Fossil.wCCS < 15) %>%
+  select(pc.Nuclear,
+         pc.Renewables) %>%
+  pivot_longer(pc.Nuclear:pc.Renewables,
+               names_to="Fuel",
+               values_to="Gen_pc",
+               names_prefix="pc.") %>%
+  mutate(Sample="Low fossil-CCS")
+# High Fossil CCS runs, re-shaped for boxplot
+high_fccs_runs <- runs %>% 
+  filter(Year==yr,
+         pc.Fossil.wCCS > 15) %>%
+  select(pc.Nuclear,
+         pc.Renewables) %>%
+  pivot_longer(pc.Nuclear:pc.Renewables,
+               names_to="Fuel",
+               values_to="Gen_pc",
+               names_prefix="pc.") %>%
+  mutate(Sample="High fossil-CCS")
 
-# ---- Biomass changes
+png(file=paste0("plots/fossil_ccs_trade-offs_",reg_lab,"_",yr,".png"),width=1200,height=800,res=200,type='cairo')
+runs %>%
+  filter(Year==yr) %>%
+  select(pc.Nuclear,
+         pc.Renewables,
+         pc.Biomass.wCCS) %>%
+  pivot_longer(pc.Nuclear:pc.Renewables,
+               names_to="Fuel",
+               values_to="Gen_pc",
+               names_prefix="pc.") %>%
+  mutate(Sample="All") %>%
+  bind_rows(low_fccs_runs) %>%
+  bind_rows(high_fccs_runs) %>%
+  mutate(Fuel=ifelse(Fuel %in% "Biomass.wCCS", "BECCS", Fuel)) %>%
+  ggplot(aes(x=Fuel, y=Gen_pc)) +
+  geom_boxplot(aes(colour=Sample), varwidth=T) +
+  labs(x="", y="% electricity generation", title=paste("Share of generation in",yr) 
+       #subtitle=paste0(reg_lab,", ",t_lab)
+       ) 
+dev.off()
+
+ks.test(runs$pc.Nuclear[runs$Year==yr & runs$pc.Fossil.wCCS < 15], runs$pc.Nuclear[runs$Year==yr]) #p=0.29
+ks.test(runs$pc.Nuclear[runs$Year==yr & runs$pc.Fossil.wCCS > 15], runs$pc.Nuclear[runs$Year==yr]) #p=0.07
+ks.test(runs$pc.Renewables[runs$Year==yr & runs$pc.Fossil.wCCS < 15], runs$pc.Renewables[runs$Year==yr]) #p=0.21
+ks.test(runs$pc.Renewables[runs$Year==yr & runs$pc.Fossil.wCCS > 15], runs$pc.Renewables[runs$Year==yr]) #p=0.04 - this is the only significant result. High fossil CCS have lower renewables. 
+
+# ---- Biomass changes ----
 # Biomass only
 bio_changes <- runs %>% 
   select(mod_scen, 
@@ -1400,7 +1482,7 @@ bio_changes <- runs %>%
          SecondaryEnergy.Electricity.Biomass.woCCS,
          SecondaryEnergy.Electricity.Biomass.wCCS) %>%
   #SecondaryEnergy.Electricity.Gas.wCCS) %>%
-  filter(Year %in% c(2020, 2030, 2050)) %>%
+  filter(Year %in% c(2020, 2030, 2040, 2050)) %>%
   #replace(is.na(.), 0) %>% # replace missing emissions with zero, for sums
   rename(Abated = SecondaryEnergy.Electricity.Biomass.wCCS,
          Unabated = SecondaryEnergy.Electricity.Biomass.woCCS) %>%
@@ -1408,9 +1490,22 @@ bio_changes <- runs %>%
   pivot_longer(Abated:Unabated, names_to = "Fuel", values_to="EJ") %>%
   pivot_wider(names_from = Year, values_from = EJ, names_prefix = "y") %>%
   mutate(diff20_30 = y2030-y2020,
-         diff20_50 = y2050-y2020)
+         diff20_50 = y2050-y2020,
+         diff30_40 = y2040-y2030,
+         diff40_50 = y2050-y2040)
 
-bio_chng_2030_1p5 <- bio_changes %>%
+#bio_changes_all <- bio_changes %>%
+#  group_by(mod_scen) %>%
+#  summarise(diff20_30=sum(diff20_30, na.rm=T),
+#            diff30_40=sum(diff30_40, na.rm=T),
+#            diff40_50=sum(diff40_50, na.rm=T))
+
+#lims_30 <- c(min(bio_changes_all$diff20_30), max(bio_changes_all$diff20_30))
+#lims_40 <- c(min(bio_changes_all$diff30_40), max(bio_changes_all$diff30_40))
+#lims_50 <- c(min(bio_changes_all$diff40_50), max(bio_changes_all$diff40_50))
+
+# 2030 - 2020
+bio_chng_20_30_1p5 <- bio_changes %>%
   filter(cat2 %in% "<1.5C") %>%
   mutate(mod_scen = str_replace(mod_scen, "\\|", "\n")) %>%
   ggplot(aes(x=mod_scen, y=diff20_30*278, fill=Fuel)) + #levels=c("Other", "Industry.Process", "Transport", "Buildings", "Industry.Combustion", "AFOLU", "Electricity")))) +
@@ -1419,50 +1514,82 @@ bio_chng_2030_1p5 <- bio_changes %>%
        title="") +
        #subtitle=paste0(reg_lab,", ",t_lab)) +
   theme(axis.text.x = element_blank(),
-        plot.margin = margin(20, 5.5, 5.5, 50)) + #trbl
+        plot.margin = margin(20, 5.5, 0, 70)) + #trbl
+  lims(y=c(-300, 1000)) +
   guides(fill=F)
 
-bio_chng_2030_2 <- bio_changes %>%
+bio_chng_20_30_2 <- bio_changes %>%
   filter(cat2 %in% "1.5-2C") %>%
   mutate(mod_scen = str_replace(mod_scen, "\\|", "\n")) %>%
   ggplot(aes(x=mod_scen, y=diff20_30*278, fill=Fuel)) + #levels=c("Other", "Industry.Process", "Transport", "Buildings", "Industry.Combustion", "AFOLU", "Electricity")))) +
   geom_bar(stat='identity', position='stack') +
   labs(y="", x="", fill="",
        title="") +
+  lims(y=c(-300, 1000)) +
   #subtitle=paste0(reg_lab,", ",t_lab)) +
   theme(axis.text.x = element_blank(),
-        plot.margin = margin(20, 5.5, 5.5, 5.5)) + #trbl)
+        plot.margin = margin(20, 5.5, 0, 5.5))  #trbl)
 
-bio_chng_2050_1p5 <- bio_changes %>%
+# 2040 - 2030  
+bio_chng_30_40_1p5 <- bio_changes %>%
   filter(cat2 %in% "<1.5C") %>%
   mutate(mod_scen = str_replace(mod_scen, "\\|", "\n")) %>%
-  ggplot(aes(x=mod_scen, y=diff20_50*278, fill=Fuel)) + #levels=c("Other", "Industry.Process", "Transport", "Buildings", "Industry.Combustion", "AFOLU", "Electricity")))) +
+  ggplot(aes(x=mod_scen, y=diff30_40*278, fill=Fuel)) + #levels=c("Other", "Industry.Process", "Transport", "Buildings", "Industry.Combustion", "AFOLU", "Electricity")))) +
   geom_bar(stat='identity', position='stack') +
   labs(y="", x="", fill="",
        title="") +
+  lims(y=c(-2000, 2000)) +
   #subtitle=paste0(reg_lab,", ",t_lab)) +
   theme(axis.text.x = element_blank(),
-        plot.margin = margin(0, 5.5, 5.5, 50)) + #trbl
+        plot.margin = margin(20, 5.5, 0, 70)) + #trbl
   guides(fill=F)
 
-bio_chng_2050_2 <- bio_changes %>%
+bio_chng_30_40_2 <- bio_changes %>%
   filter(cat2 %in% "1.5-2C") %>%
   mutate(mod_scen = str_replace(mod_scen, "\\|", "\n")) %>%
-  ggplot(aes(x=mod_scen, y=diff20_50*278, fill=Fuel)) + #levels=c("Other", "Industry.Process", "Transport", "Buildings", "Industry.Combustion", "AFOLU", "Electricity")))) +
+  ggplot(aes(x=mod_scen, y=diff30_40*278, fill=Fuel)) + #levels=c("Other", "Industry.Process", "Transport", "Buildings", "Industry.Combustion", "AFOLU", "Electricity")))) +
   geom_bar(stat='identity', position='stack') +
   labs(y="", x="", fill="",
        title="") +
+  lims(y=c(-2000, 2000)) +
   #subtitle=paste0(reg_lab,", ",t_lab)) +
   theme(axis.text.x = element_blank(),
-        plot.margin = margin(0, 5.5, 5.5, 5.5)) + #trbl)
+        plot.margin = margin(20, 5.5, 0, 5.5)) #trbl)
+  
+# 2050 - 2040
+bio_chng_40_50_1p5 <- bio_changes %>%
+  filter(cat2 %in% "<1.5C") %>%
+  mutate(mod_scen = str_replace(mod_scen, "\\|", "\n")) %>%
+  ggplot(aes(x=mod_scen, y=diff40_50*278, fill=Fuel)) + #levels=c("Other", "Industry.Process", "Transport", "Buildings", "Industry.Combustion", "AFOLU", "Electricity")))) +
+  geom_bar(stat='identity', position='stack') +
+  labs(y="", x="", fill="",
+       title="") +
+  lims(y=c(-600, 2500)) +
+  #subtitle=paste0(reg_lab,", ",t_lab)) +
+  theme(axis.text.x = element_blank(),
+        plot.margin = margin(0, 5.5, 0, 70)) + #trbl
+  guides(fill=F)
 
-png(file=paste0("plots/biomass_growth_",reg_lab,".png"),width=1200,height=1000,res=200,type='cairo')
-plot_grid(bio_chng_2030_1p5, bio_chng_2030_2, bio_chng_2050_1p5, bio_chng_2050_2, 
-          nrow=2, labels=c("<1.5C", "<2C", "2030", "2050"), rel_widths=c(1,1.5),
-          label_x = c(0.5, 0.4, 0.0, -0.66), 
-          label_y = c(1.0, 1.0, 1.65, 0.6)
+bio_chng_40_50_2 <- bio_changes %>%
+  filter(cat2 %in% "1.5-2C") %>%
+  mutate(mod_scen = str_replace(mod_scen, "\\|", "\n")) %>%
+  ggplot(aes(x=mod_scen, y=diff40_50*278, fill=Fuel)) + #levels=c("Other", "Industry.Process", "Transport", "Buildings", "Industry.Combustion", "AFOLU", "Electricity")))) +
+  geom_bar(stat='identity', position='stack') +
+  labs(y="", x="", fill="",
+       title="") +
+  lims(y=c(-600, 2500)) +
+  #subtitle=paste0(reg_lab,", ",t_lab)) +
+  theme(axis.text.x = element_blank(),
+        plot.margin = margin(0, 5.5, 0, 5.5)) #trbl)
+
+png(file=paste0("plots/biomass_growth_",reg_lab,".png"),width=1400,height=1400,res=200,type='cairo')
+plot_grid(bio_chng_20_30_1p5, bio_chng_20_30_2, bio_chng_30_40_1p5, bio_chng_30_40_2, bio_chng_40_50_1p5, bio_chng_40_50_2,
+          nrow=3, 
+          labels=c("<1.5C", "<2C", "2030 - 2020", "2040 - 2030", "2050 - 2040"), 
+          rel_widths=c(1,1.9),
+          label_x = c(0.5, 0.4, -0.12, -0.58, -0.12), 
+          label_y = c(1.0, 1.0, 1.65, 0.6, 0.6)
 )
-
 dev.off()
 
 # ---- 1.5C vs 2C tech timelines ----
@@ -1599,7 +1726,7 @@ png(file=paste0("plots/renewables_comp_",reg_lab,".png"),width=1200,height=800,r
 ggplot(filter(runs_summary, Type2 %in% "Renewables", Year %in% c(2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2030,2040,2050)), 
        aes(x=Year)) +
   geom_ribbon(aes(ymin=q25, ymax=q75, group=cat2, fill=cat2), alpha=0.4) +
-  geom_line(data=renew_growth, aes(x=Year, y=EJ/278, group=Rate), linetype="dashed", colour="grey50", size=1.5, alpha=0.7) +
+  #geom_line(data=renew_growth, aes(x=Year, y=EJ/278, group=Rate), linetype="dashed", colour="grey50", size=1.5, alpha=0.7) +
   geom_line(size=0.8, aes(y=med, group=cat2, colour=cat2)) +
   geom_point(size=3, aes(y=med, colour=cat2)) +
   #geom_line(data=renew_growth, aes(x=Year, y=EJ/278, group=Rate), linetype="dashed", colour="grey50", size=1.5, alpha=0.7) +
@@ -1618,6 +1745,28 @@ ggplot(filter(runs_summary, Type2 %in% "Renewables", Year %in% c(2010,2011,2012,
   guides(fill=F)
 dev.off()
 
+png(file=paste0("plots/nuclear_comp_",reg_lab,".png"),width=1200,height=800,res=200,type='cairo')
+ggplot(filter(runs_summary, Type2 %in% "Nuclear", Year %in% c(2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2030,2040,2050)), 
+       aes(x=Year)) +
+  geom_ribbon(aes(ymin=q25, ymax=q75, group=cat2, fill=cat2), alpha=0.4) +
+  geom_line(size=0.8, aes(y=med, group=cat2, colour=cat2)) +
+  geom_point(size=3, aes(y=med, colour=cat2)) +
+  # Real data
+  geom_line(aes(y=Value_TWh/278, color=Type2, group=Type2), size=1) +
+  labs(x="",
+       y="Electricity production (EJ)",
+       title="Nuclear electricity in different warming scenarios",
+       subtitle=paste0("Region: ", reg_lab),
+       colour="",
+       fill="") +
+  scale_x_continuous(breaks=c(2010, 2020, 2030, 2040, 2050), limits = c(2010, 2050)) +
+  scale_color_manual(values=c("Nuclear"="darkorange", "<1.5C"="skyblue3", "1.5-2C"="Coral1"),
+                     labels=c("Nuclear"="Historic production")) +
+  scale_fill_manual(values=c("<1.5C"="skyblue3", "1.5-2C"="Coral1")) +
+  guides(fill=F)
+dev.off()
+
+
 # Share
 renew_pc_sum <- runs %>%
   filter(Year %in% c(2020, 2030, 2040, 2050)) %>%
@@ -1628,6 +1777,66 @@ renew_pc_sum <- runs %>%
   ungroup() %>%
   mutate(Type="Renewables_share")
 
+
+# ---- Fossil CCS ----
+yr <- 2070
+png(file=paste0("plots/fossil_wCCS_",yr,"_",reg_lab,".png"),width=1200,height=600,res=200,type='cairo')
+runs %>% filter(Year==yr, !is.na(pc.Coal.wCCS) & !is.na(pc.Gas.wCCS)) %>%
+  mutate(pc.Fossil.wCCS = pc.Gas.wCCS + pc.Coal.wCCS) %>%
+  ggplot(aes(x=pc.Fossil.wCCS, fill=cat2)) +
+  geom_histogram(stat='bin', binwidth=2) +
+  labs(x="Electricity from Fossil + CCS (%)", 
+       y="",
+       title="",
+       fill="Warming") +
+  theme(text = element_text(size=8)) +
+  scale_x_continuous(breaks=c(0,5,10,15,20,25,30)) +
+  scale_fill_discrete(labels=c("<1.5C"="1.5C", "1.5-2C"="2C"))
+dev.off()
+
+png(file=paste0("plots/CarbonSeq_fossilwCCS_",yr,"_",reg_lab,".png"),width=1200,height=600,res=200,type='cairo')
+runs %>% filter(Year==yr, !is.na(CarbonSequestration.CCS.Fossil)) %>%
+  #mutate(pc.Fossil.wCCS = pc.Gas.wCCS + pc.Coal.wCCS) %>%
+  ggplot(aes(x=CarbonSequestration.CCS.Fossil, fill=cat2)) +
+  geom_histogram(stat='bin', binwidth=1000) +
+  labs(title="Carbon Sequestration from Fossil + CCS (GtCO2)", 
+       y="",
+       x="",
+       fill="Warming") +
+  theme(text = element_text(size=8)) +
+  #scale_x_continuous(breaks=c(0,5,10,15,20,25,30)) +
+  scale_fill_discrete(labels=c("<1.5C"="1.5C", "1.5-2C"="2C"))
+dev.off()
+
+# ---- BECCS ----
+yr <- 2070
+png(file=paste0("plots/BECCS_",yr,"_",reg_lab,".png"),width=1200,height=600,res=200,type='cairo')
+runs %>% filter(Year==yr, !is.na(SecondaryEnergy.Electricity.Biomass.wCCS)) %>%
+  mutate(pc.Biomass.wCCS = 100*SecondaryEnergy.Electricity.Biomass.wCCS/SecondaryEnergy.Electricity) %>%
+  ggplot(aes(x=pc.Biomass.wCCS, fill=cat2)) +
+  geom_histogram(stat='bin', binwidth=1) +
+  labs(x="Electricity from BECCS (%)", 
+       y="",
+       title="",
+       fill="Warming") +
+  theme(text = element_text(size=8)) +
+  #scale_x_continuous(breaks=c(0,5,10,15,20,25,30)) +
+  scale_fill_discrete(labels=c("<1.5C"="1.5C", "1.5-2C"="2C"))
+dev.off()
+
+png(file=paste0("plots/CarbonSeq_BECCS_",yr,"_",reg_lab,".png"),width=1200,height=600,res=200,type='cairo')
+runs %>% filter(Year==yr, !is.na(CarbonSequestration.CCS.Biomass)) %>%
+  #mutate(pc.Fossil.wCCS = pc.Gas.wCCS + pc.Coal.wCCS) %>%
+  ggplot(aes(x=CarbonSequestration.CCS.Biomass, fill=cat2)) +
+  geom_histogram(stat='bin', binwidth=1000) +
+  labs(title="Carbon Sequestration from BECCS (GtCO2)", 
+       y="",
+       x="",
+       fill="Warming") +
+  theme(text = element_text(size=8)) +
+  #scale_x_continuous(breaks=c(0,5,10,15,20,25,30)) +
+  scale_fill_discrete(labels=c("<1.5C"="1.5C", "1.5-2C"="2C"))
+dev.off()
 
 # ---- Coal CCS ----
 
@@ -1726,6 +1935,49 @@ ggplot(filter(gas_pc_wCCS, !(Year>2060 & Pathway=="<1.5C")),
         axis.text = element_text(size=8),
         legend.text = element_text(size=9)) 
 dev.off()
+# ---- CCS by fuel and 1.5C vs 2C ----
+#png(file=paste0("plots/elec_demand_ppchange_2020-30-50_",str_replace(t_lab,"<",""),".png"),width=1400,height=1000,res=220,type='cairo')
+runs %>% 
+  filter(Year %in% c(2020, 2030, 2040, 2050, 2060, 2070, 2080, 2090, 2100)) %>%
+  select(mod_scen, Year, cat2, CarbonSequestration.CCS.Biomass, CarbonSequestration.CCS.Fossil) %>%
+  pivot_longer(CarbonSequestration.CCS.Biomass:CarbonSequestration.CCS.Fossil, names_to="Fuel", values_to="Carbon", names_prefix = "CarbonSequestration.CCS.") %>%
+  ggplot(aes(x=Fuel, y=Carbon)) +
+  geom_boxplot(aes(colour=cat2)) +
+  transition_time(Year) +
+  ease_aes('linear') +
+  labs(title = "Carbon sequestration in 1.5C and 2C models",
+       subtitle = 'Year: {frame_time}',
+       #subtitle=paste0("With respect to 2020 (",t_lab,")"),
+       x="",
+       y="GtCO2",
+       colour="Warming") +
+  scale_colour_discrete(labels=c("<1.5C"="1.5C", "1.5-2C"="2C")) +
+  theme(text=element_text(size=18),
+        title=element_text(size=14))
+anim_save("plots/carbonSeq_animation.gif")
+  #scale_y_continuous(breaks=c(0, 10, 20, 30, 40), labels = c("0%", "10%", "20%", "30%", "40%")) +
+  #scale_x_discrete((labels=c("")))
+
+runs %>% 
+  filter(Year %in% c(2020, 2030, 2040, 2050, 2060, 2070, 2080, 2090, 2100)) %>%
+  select(mod_scen, Year, cat2, pc.Biomass.wCCS, pc.Fossil.wCCS) %>%
+  pivot_longer(pc.Biomass.wCCS:pc.Fossil.wCCS, names_to="Fuel", values_to="Gen.pc", names_prefix = "pc.") %>%
+  ggplot(aes(x=Fuel, y=Gen.pc)) +
+  geom_boxplot(aes(colour=cat2), varwidth=T) +
+  transition_time(Year) +
+  ease_aes('linear') +
+  labs(title = "Share of electricity from abated sources in 1.5C and 2C models",
+       subtitle = 'Year: {frame_time}',
+       #subtitle=paste0("With respect to 2020 (",t_lab,")"),
+       x="",
+       y="% electricity",
+       colour="Warming") +
+  scale_colour_discrete(labels=c("<1.5C"="1.5C", "1.5-2C"="2C")) +
+  theme(text=element_text(size=18),
+        title=element_text(size=14))
+anim_save("plots/CCS_gen_animation.gif")
+
+#dev.off()
 ######### OUTLIERS ############
 # ---- High coal ----
 # Histogram of coal in given year <1.5C
