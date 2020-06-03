@@ -1,7 +1,7 @@
 # Function to filter runs
 require(tidyverse)
 
-# Inputs: run sample, warming categories, region, sustainability limits, models to exclude if region selected
+# Inputs: run sample, warming categories, region, sustainability limits
 filter_runs_comp <- function(runs, temp_cats, limits, ms_exclude) {
   
   # Select runs that meet temp criteria
@@ -16,7 +16,7 @@ filter_runs_comp <- function(runs, temp_cats, limits, ms_exclude) {
   keep_ms <- runs$mod_scen[runs$Year==2050 & runs$Region %in% "World" & runs$CarbonSequestration.CCS.Biomass<=beccs_lim & runs$PrimaryEnergy.Biomass<=bio_lim]
   
   # --- FILTER runs
-  runs <- filter(runs, mod_scen %in% keep_ms)
+  runs <- filter(runs, mod_scen %in% keep_ms & !mod_scen %in% ms_exclude)
   
   return(runs)
   
