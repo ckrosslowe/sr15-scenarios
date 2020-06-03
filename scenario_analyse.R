@@ -85,10 +85,12 @@ ger_pc_regions <- ger %>% filter(Year > 2010) %>%
   summarise(Production = sum(Value_TWh, na.rm=T)) %>%
   #ungroup() %>%
   pivot_wider(id_cols=c("Year", "Production", "Region_ipcc", "Type2"), names_from=Type2, values_from=Production, names_repair="unique") %>%
-  mutate(Total=Coal+Gas+Nuclear+Renewables+Other) %>%
+  mutate(Total=Coal+Gas+Nuclear+Solar+Wind+Hydro+Other) %>%
   mutate(pc.Coal=100*Coal/Total,
          pc.Gas=100*Gas/Total,
-         pc.Renewables=100*Renewables/Total,
+         pc.Solar=100*Solar/Total,
+         pc.Wind=100*Wind/Total,
+         pc.Hydro=100*Hydro/Total,
          pc.Nuclear=100*Nuclear/Total)
 
 ger_pc_sum <- ger %>% filter(Year > 2010) %>%
@@ -96,11 +98,13 @@ ger_pc_sum <- ger %>% filter(Year > 2010) %>%
   summarise(Production = sum(Value_TWh, na.rm=T)) %>%
   #ungroup() %>%
   pivot_wider(id_cols=c("Year", "Production", "Type2"), names_from=Type2, values_from=Production, names_repair="unique") %>%
-  mutate(Total=Coal+Gas+Nuclear+Renewables+Other,
+  mutate(Total=Coal+Gas+Nuclear+Solar+Wind+Hydro+Other,
          Region_ipcc = "World") %>%
   mutate(pc.Coal=100*Coal/Total,
          pc.Gas=100*Gas/Total,
-         pc.Renewables=100*Renewables/Total,
+         pc.Solar=100*Solar/Total,
+         pc.Wind=100*Wind/Total,
+         pc.Hydro=100*Hydro/Total,
          pc.Nuclear=100*Nuclear/Total) %>%
          bind_rows(ger_pc_regions)
 
@@ -152,12 +156,12 @@ if (t_lab %in% "<2C")    temp_cats <- c("1.5C low overshoot", "Below 1.5C", "1.5
 #if (t_lab %in% "1.5-2C") temp_cats <- c("1.5C high overshoot", "Lower 2C", "Higher 2C")
 if (t_lab %in% "1.5-2C") temp_cats <- c("1.5C high overshoot", "Lower 2C")
 
-reg <- "World"
+#reg <- "World"
 #reg <- "R5OECD90+EU"
 #reg <- "R5MAF"
 #reg <- "R5ASIA"
 #reg <- "R5LAM"
-#reg <- "R5REF"
+reg <- "R5REF"
 #reg <- "R5ROWO"
 
 reg_lab <- regions$reg_lab[regions$region %in% reg]
@@ -1730,14 +1734,32 @@ biomass_sum <- runs %>%
   ungroup() %>%
   mutate(Type2="Biomass")
 
-renew_sum <- runs %>%
+#renew_sum <- runs %>%
+#  filter(Year %in% c(2020, 2030, 2040, 2050)) %>%
+#  group_by(Year, cat2) %>%
+#  summarise(med = median(SecondaryEnergy.Electricity.Renewables),
+#            q25 = quantile(SecondaryEnergy.Electricity.Renewables, 0.25),
+#            q75 = quantile(SecondaryEnergy.Electricity.Renewables, 0.75)) %>%
+#  ungroup() %>%
+#  mutate(Type2="Renewables")
+
+solar_sum <- runs %>%
   filter(Year %in% c(2020, 2030, 2040, 2050)) %>%
   group_by(Year, cat2) %>%
-  summarise(med = median(SecondaryEnergy.Electricity.Renewables),
-            q25 = quantile(SecondaryEnergy.Electricity.Renewables, 0.25),
-            q75 = quantile(SecondaryEnergy.Electricity.Renewables, 0.75)) %>%
+  summarise(med = median(SecondaryEnergy.Electricity.Solar),
+            q25 = quantile(SecondaryEnergy.Electricity.Solar, 0.25),
+            q75 = quantile(SecondaryEnergy.Electricity.Solar, 0.75)) %>%
   ungroup() %>%
-  mutate(Type2="Renewables")
+  mutate(Type2="Solar")
+
+wind_sum <- runs %>%
+  filter(Year %in% c(2020, 2030, 2040, 2050)) %>%
+  group_by(Year, cat2) %>%
+  summarise(med = median(SecondaryEnergy.Electricity.Wind),
+            q25 = quantile(SecondaryEnergy.Electricity.Wind, 0.25),
+            q75 = quantile(SecondaryEnergy.Electricity.Wind, 0.75)) %>%
+  ungroup() %>%
+  mutate(Type2="Wind")
 
 nuc_sum <- runs %>%
   filter(Year %in% c(2020, 2030, 2040, 2050)) %>%
@@ -1749,7 +1771,10 @@ nuc_sum <- runs %>%
   mutate(Type2="Nuclear")
 
 
-runs_summary <- bind_rows(coal_sum, gas_sum, biomass_sum, renew_sum, nuc_sum, filter(ger_sum, Region_ipcc %in% reg_lab))
+runs_summary <- bind_rows(coal_sum, gas_sum, biomass_sum, solar_sum, wind_sum, nuc_sum, filter(ger_sum, Region_ipcc %in% reg_lab)) %>%
+  mutate(med = 278*med,
+         q25 = 278*q25,
+         q75 = 278*q75)
 
 png(file=paste0("plots/coal_woCCS_comp_",reg_lab,".png"),width=1200,height=800,res=200,type='cairo')
 ggplot(filter(runs_summary, Type2 %in% "Coal", Year %in% c(2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2030,2040,2050)), 
@@ -1758,9 +1783,9 @@ ggplot(filter(runs_summary, Type2 %in% "Coal", Year %in% c(2010,2011,2012,2013,2
   geom_line(size=0.8, aes(y=med, group=cat2, colour=cat2)) +
   geom_point(aes(y=med, colour=cat2), size=2) +
   # Real data
-  geom_line(aes(y=Value_TWh/278, color=Type2, group=Type2), size=1) +
+  geom_line(aes(y=Value_TWh, color=Type2, group=Type2), size=1) +
   labs(x="",
-       y="Electricity production (EJ)",
+       y="Electricity production (TWh)",
        title="Unabated coal electricity in different pathways",
        subtitle=paste0("Region: ", reg_lab),
        colour="",
@@ -1780,9 +1805,9 @@ ggplot(filter(runs_summary, Type2 %in% "Gas", Year %in% c(2010,2011,2012,2013,20
   geom_line(size=0.8, aes(y=med, group=cat2, colour=cat2)) +
   geom_point(size=2, aes(y=med, colour=cat2)) +
   # Real data
-  geom_line(aes(y=Value_TWh/278, color=Type2, group=Type2), size=1) +
+  geom_line(aes(y=Value_TWh, color=Type2, group=Type2), size=1) +
   labs(x="",
-       y="Electricity production (EJ)",
+       y="Electricity production (TWh)",
        title="Unabated gas electricity in different pathways",
        subtitle=paste0("Region: ", reg_lab),
        colour="",
@@ -1806,9 +1831,9 @@ ggplot(filter(runs_summary, Type2 %in% "Biomass", Year %in% c(2010,2011,2012,201
   geom_line(size=0.8, aes(y=med, group=cat2, colour=cat2)) +
   geom_point(size=3, aes(y=med, colour=cat2)) +
   # Real data
-  geom_line(aes(y=Value_TWh/278, color=Type2, group=Type2), size=1) +
+  geom_line(aes(y=Value_TWh, color=Type2, group=Type2), size=1) +
   labs(x="",
-       y="Electricity production (EJ)",
+       y="Electricity production (TWh)",
        title="Biomass (unabated) electricity in different warming scenarios",
        subtitle=paste0("Region: ", reg_lab),
        colour="",
@@ -1826,25 +1851,87 @@ renew_growth <- tibble(Year=c(2020:2050)) %>%
          Renew7 = 6374*(1+0.07)^(Year-2019)) %>%
   pivot_longer(Renew5:Renew7, names_to="Rate", values_to="EJ")
 
-png(file=paste0("plots/renewables_comp_",reg_lab,".png"),width=1200,height=800,res=200,type='cairo')
-ggplot(filter(runs_summary, Type2 %in% "Renewables", Year %in% c(2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2030,2040,2050)), 
+#png(file=paste0("plots/renewables_comp_",reg_lab,".png"),width=1200,height=800,res=200,type='cairo')
+#ggplot(filter(runs_summary, Type2 %in% "Renewables", Year %in% c(2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2030,2040,2050)), 
+#       aes(x=Year)) +
+#  geom_ribbon(aes(ymin=q25, ymax=q75, group=cat2, fill=cat2), alpha=0.4) +
+#  #geom_line(data=renew_growth, aes(x=Year, y=EJ/278, group=Rate), linetype="dashed", colour="grey50", size=1.5, alpha=0.7) +
+#  geom_line(size=0.8, aes(y=med, group=cat2, colour=cat2)) +
+#  geom_point(size=3, aes(y=med, colour=cat2)) +
+#  #geom_line(data=renew_growth, aes(x=Year, y=EJ/278, group=Rate), linetype="dashed", colour="grey50", size=1.5, alpha=0.7) +
+#  # Real data
+#  geom_line(aes(y=Value_TWh/278, color=Type2, group=Type2), size=1) +
+#  labs(x="",
+#       y="Electricity production (EJ)",
+#       title="Renewable electricity in different warming scenarios",
+#       subtitle=paste0("Region: ", reg_lab),
+#       colour="",
+#       fill="") +
+#  scale_x_continuous(breaks=c(2010, 2020, 2030, 2040, 2050), limits = c(2010, 2050)) +
+#  scale_color_manual(values=c("Renewables"="purple", "<1.5C"="skyblue3", "1.5-2C"="Coral1"),
+#                     labels=c("Renewables"="Historic\nproduction")) +
+#  scale_fill_manual(values=c("<1.5C"="skyblue3", "1.5-2C"="Coral1")) +
+#  guides(fill=F)
+#dev.off()
+
+# SOLAR
+solar_proj <- tibble(Year=c(2020:2050)) %>%
+  mutate(Solar_exp1 = 699*(1+0.10)^(Year-2019),
+         Solar_exp2 = 699*(1+0.15)^(Year-2019)
+         #Solar_lin1 = 699+((Year-2019)*250),
+         #Solar_lin2 = 699+((Year-2019)*500),
+         ) %>%
+  pivot_longer(Solar_exp1:Solar_exp2, names_to="Rate", values_to="TWh")
+
+png(file=paste0("plots/solar_comp_",reg_lab,".png"),width=1200,height=800,res=200,type='cairo')
+ggplot(filter(runs_summary, Type2 %in% "Solar", Year %in% c(2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2030,2040,2050)), 
        aes(x=Year)) +
-  geom_ribbon(aes(ymin=q25, ymax=q75, group=cat2, fill=cat2), alpha=0.4) +
-  #geom_line(data=renew_growth, aes(x=Year, y=EJ/278, group=Rate), linetype="dashed", colour="grey50", size=1.5, alpha=0.7) +
-  geom_line(size=0.8, aes(y=med, group=cat2, colour=cat2)) +
-  geom_point(size=3, aes(y=med, colour=cat2)) +
-  #geom_line(data=renew_growth, aes(x=Year, y=EJ/278, group=Rate), linetype="dashed", colour="grey50", size=1.5, alpha=0.7) +
+  geom_ribbon(aes(ymin=q25, ymax=q75, group=cat2, fill=cat2), alpha=0.2) +
+  geom_line(size=0.8, aes(y=med, group=cat2, colour=cat2), alpha=0.7) +
+  geom_point(size=2.5, aes(y=med, colour=cat2), alpha=1) +
+  #geom_line(data=filter(solar_proj, Year<=2040), aes(x=Year, y=TWh, group=Rate), linetype="dotted", colour="grey50", size=1, alpha=0.7) +
   # Real data
-  geom_line(aes(y=Value_TWh/278, color=Type2, group=Type2), size=1) +
+  geom_line(aes(y=Value_TWh, color=Type2, group=Type2), size=1) +
   labs(x="",
-       y="Electricity production (EJ)",
-       title="Renewable electricity in different warming scenarios",
+       y="Electricity production (TWh)",
+       title="Solar electricity in different warming pathways",
        subtitle=paste0("Region: ", reg_lab),
        colour="",
        fill="") +
   scale_x_continuous(breaks=c(2010, 2020, 2030, 2040, 2050), limits = c(2010, 2050)) +
-  scale_color_manual(values=c("Renewables"="purple", "<1.5C"="skyblue3", "1.5-2C"="Coral1"),
-                     labels=c("Renewables"="Historic\nproduction")) +
+  scale_color_manual(values=c("Solar"="Gold", "<1.5C"="skyblue3", "1.5-2C"="Coral1"),
+                     labels=c("Solar"="Historic\nproduction")) +
+  scale_fill_manual(values=c("<1.5C"="skyblue3", "1.5-2C"="Coral1")) +
+  guides(fill=F)
+dev.off()
+
+# WIND
+wind_proj <- tibble(Year=c(2020:2050)) %>%
+  mutate(#exp1 = 1404*(1+0.10)^(Year-2019),
+         #exp2 = 1404*(1+0.12)^(Year-2019)
+         lin1 = 1404+((Year-2019)*350),
+         lin2 = 1404+((Year-2019)*500)
+  ) %>%
+  pivot_longer(lin1:lin2, names_to="Rate", values_to="TWh")
+
+png(file=paste0("plots/wind_comp_",reg_lab,".png"),width=1200,height=800,res=200,type='cairo')
+ggplot(filter(runs_summary, Type2 %in% "Wind", Year %in% c(2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2030,2040,2050)), 
+       aes(x=Year)) +
+  geom_ribbon(aes(ymin=q25, ymax=q75, group=cat2, fill=cat2), alpha=0.2) +
+  geom_line(size=0.8, aes(y=med, group=cat2, colour=cat2), alpha=0.7) +
+  geom_point(size=2.5, aes(y=med, colour=cat2), alpha=1) +
+  #geom_line(data=filter(wind_proj, Year<=2050), aes(x=Year, y=TWh, group=Rate), linetype="dotted", colour="grey20", size=0.8, alpha=0.7) +
+  # Real data
+  geom_line(aes(y=Value_TWh, color=Type2, group=Type2), size=1) +
+  labs(x="",
+       y="Electricity production (TWh)",
+       title="Wind electricity in different warming pathways",
+       subtitle=paste0("Region: ", reg_lab),
+       colour="",
+       fill="") +
+  scale_x_continuous(breaks=c(2010, 2020, 2030, 2040, 2050), limits = c(2010, 2050)) +
+  scale_color_manual(values=c("Wind"="firebrick1", "<1.5C"="skyblue3", "1.5-2C"="Coral1"),
+                     labels=c("Wind"="Historic\nproduction")) +
   scale_fill_manual(values=c("<1.5C"="skyblue3", "1.5-2C"="Coral1")) +
   guides(fill=F)
 dev.off()
@@ -1856,9 +1943,9 @@ ggplot(filter(runs_summary, Type2 %in% "Nuclear", Year %in% c(2010,2011,2012,201
   geom_line(size=0.8, aes(y=med, group=cat2, colour=cat2)) +
   geom_point(size=3, aes(y=med, colour=cat2)) +
   # Real data
-  geom_line(aes(y=Value_TWh/278, color=Type2, group=Type2), size=1) +
+  geom_line(aes(y=Value_TWh, color=Type2, group=Type2), size=1) +
   labs(x="",
-       y="Electricity production (EJ)",
+       y="Electricity production (TWh)",
        title="Nuclear electricity in different warming scenarios",
        subtitle=paste0("Region: ", reg_lab),
        colour="",
@@ -2031,6 +2118,66 @@ dev.off()
   #labs(y="Emissions from electricity (Mt CO2)", x="") +
   #scale_colour_viridis(discrete=T)
 
+# TEST: what is the percentage coal?
+ggplot(runs[!is.na(runs$pc.Coal),], aes(x=Year, y=pc.Coal)) +
+  geom_line(aes(group=mod_scen, colour=cat2))
+ggplot(filter(runs, Year %in% c(2040, 2050, 2070)), aes(x=pc.Coal)) +
+  geom_histogram(aes(fill=cat2), binwidth=0.2) +
+  geom_vline(xintercept=1) +
+  facet_wrap(~Year, nrow=3)
+
+# Fraction abated
+min_2050 <- 1
+coal_ms_keep <- runs$mod_scen[runs$pc.Coal > min_2050 & runs$Year==2050]
+# DATA
+coal_pc_wCCS_med <- runs %>% filter(Year %in% c(2020, 2030, 2040, 2050, 2060, 2070, 2080, 2090, 2100),
+                                 mod_scen %in% coal_ms_keep,
+                                 cat2 %in% "1.5-2C") %>%
+  select(Year, cat2, mod_scen, SecondaryEnergy.Electricity.Coal.wCCS, SecondaryEnergy.Electricity.Coal) %>%
+  mutate(frac.Coal.wCCS = 100*SecondaryEnergy.Electricity.Coal.wCCS/SecondaryEnergy.Electricity.Coal) %>%
+  #mutate(frac.Bio.wCCS = ifelse(pc.Biomass<1, NA, frac.Bio.wCCS)) %>% # make bio abated frac NA if bio provides < a certain % of all electricity
+  select(Year, cat2, mod_scen, frac.Coal.wCCS) %>%
+  #filter(Year %in% c(2030, 2040)) %>%
+  drop_na() %>%
+  rename(Pathway = cat2) %>%
+  mutate(Pathway = ifelse(Pathway == "<1.5C", "1.5C", 
+                          ifelse(Pathway == "1.5-2C", "2C", NA))) %>%
+  group_by(Year, Pathway) %>%
+  summarise(med=median(frac.Coal.wCCS),
+            q25=quantile(frac.Coal.wCCS, 0.25),
+            q75=quantile(frac.Coal.wCCS, 0.75))
+
+coal_pc_wCCS_ind <- runs %>% filter(Year %in% c(2020, 2030, 2040, 2050, 2060, 2070, 2080, 2090, 2100),
+                                 mod_scen %in% coal_ms_keep,
+                                 cat2 %in% "<1.5C") %>%
+  select(Year, cat2, mod_scen, pc.Coal, SecondaryEnergy.Electricity.Coal.wCCS, SecondaryEnergy.Electricity.Coal) %>%
+  mutate(frac.Coal.wCCS = 100*SecondaryEnergy.Electricity.Coal.wCCS/SecondaryEnergy.Electricity.Coal) %>%
+  #mutate(frac.Bio.wCCS = ifelse(pc.Biomass<1, NA, frac.Bio.wCCS)) %>% # make bio abated frac NA if bio provides < a certain % of all electricity
+  select(Year, cat2, mod_scen, frac.Coal.wCCS) %>%
+  #filter(Year %in% c(2030, 2040)) %>%
+  drop_na() %>%
+  rename(Pathway = cat2) %>%
+  mutate(Pathway = ifelse(Pathway == "<1.5C", "1.5C", 
+                          ifelse(Pathway == "1.5-2C", "2C", NA)))
+
+# PLOT
+png(file=paste0("plots/coal_frac_abated_min_",min_2050,"_",reg_lab,".png"),width=1200,height=800,res=220,type='cairo')
+ggplot(coal_pc_wCCS_med, aes(x=Year)) + #filter(bio_pc_wCCS, !(Year>2060 & Pathway=="<1.5C")), 
+  geom_ribbon(aes(ymin=q25, ymax=q75, group=Pathway), alpha=0.3, fill="lightblue") +
+  geom_line(aes(y=med, group=Pathway, colour=Pathway), size=1) +
+  geom_line(data=coal_pc_wCCS_ind, aes(y=frac.Coal.wCCS, x=Year, group=mod_scen, colour=Pathway), inherit.aes = F, alpha=0.7) +
+  #geom_boxplot(outlier.shape = NA) + geom_jitter(width = 0.1) +
+  labs(y="Percentage abated", x="", title="By 2040, coal is either off the system or at least 50% abated", 
+       subtitle=paste0("Models that provide >",min_2050,"% of electricity from coal in 2050")) +
+  theme(text=element_text(size=8),
+        axis.text = element_text(size=8)) +
+  scale_y_continuous(labels=c("0%", "25%", "50%", "75%", "100%")) +
+  scale_x_continuous(breaks=c(2020,2030,2040,2050,2060,2070,2080,2090,2100), limits=c(2020,2100)) +
+  theme(text=element_text(size=8),
+        axis.text = element_text(size=8),
+        legend.text = element_text(size=9)) 
+dev.off()
+
 # ---- Gas CCS ----
 # Line version
 png(file=paste0("plots/gas_frac_abated_",reg_lab,".png"),width=1200,height=1000,res=220,type='cairo')
@@ -2068,37 +2215,68 @@ runs %>% filter(Year %in% c(2020, 2030, 2040, 2050, 2060, 2070, 2080, 2090, 2100
         axis.text = element_text(size=8)) +
   scale_y_continuous(labels=c("0%", "25%", "50%", "75%", "100%"))
 
+# TEST: what is the percentage coal?
+ggplot(runs[!is.na(runs$pc.Gas),], aes(x=Year, y=pc.Gas)) +
+  geom_line(aes(group=mod_scen, colour=cat2))
+ggplot(filter(runs, Year %in% c(2040, 2050, 2070)), aes(x=pc.Gas)) +
+  geom_histogram(aes(fill=cat2), binwidth=0.2) +
+  geom_vline(xintercept=5) +
+  facet_wrap(~Year, nrow=3)
+
 # median + IQR version
-gas_pc_wCCS <- runs %>% filter(Year %in% c(2020, 2030, 2040, 2050, 2060, 2070, 2080, 2090, 2100)) %>%
-  select(Year, cat2, mod_scen, SecondaryEnergy.Electricity, SecondaryEnergy.Electricity.Gas, SecondaryEnergy.Electricity.Gas.wCCS) %>%
-  mutate(pc.Gas = 100*SecondaryEnergy.Electricity.Gas/SecondaryEnergy.Electricity,
-         pc.Gas.wCCS = 100*SecondaryEnergy.Electricity.Gas.wCCS/SecondaryEnergy.Electricity.Gas) %>%
-  mutate(pc.Gas.wCCS = ifelse(pc.Gas<5, NA, pc.Gas.wCCS)) %>% # make gas abated frac NA if gas provides < a certain % of all electricity
-  select(Year, cat2, mod_scen, pc.Gas.wCCS) %>%
+# Fraction abated
+min_2050_gas <- 2
+gas_ms_keep <- runs$mod_scen[runs$pc.Gas > min_2050_gas & runs$Year==2050]
+# DATA
+gas_pc_wCCS_med <- runs %>% filter(Year %in% c(2020, 2030, 2040, 2050, 2060, 2070, 2080, 2090, 2100),
+                                    mod_scen %in% gas_ms_keep,
+                                    cat2 %in% "1.5-2C") %>%
+  select(Year, cat2, mod_scen, SecondaryEnergy.Electricity.Gas.wCCS, SecondaryEnergy.Electricity.Gas) %>%
+  mutate(frac.Gas.wCCS = 100*SecondaryEnergy.Electricity.Gas.wCCS/SecondaryEnergy.Electricity.Gas) %>%
+  #mutate(frac.Bio.wCCS = ifelse(pc.Biomass<1, NA, frac.Bio.wCCS)) %>% # make bio abated frac NA if bio provides < a certain % of all electricity
+  select(Year, cat2, mod_scen, frac.Gas.wCCS) %>%
   #filter(Year %in% c(2030, 2040)) %>%
   drop_na() %>%
   rename(Pathway = cat2) %>%
+  mutate(Pathway = ifelse(Pathway == "<1.5C", "1.5C", 
+                          ifelse(Pathway == "1.5-2C", "2C", NA))) %>%
   group_by(Year, Pathway) %>%
-  summarise(med=median(pc.Gas.wCCS),
-            q25=quantile(pc.Gas.wCCS, 0.25),
-            q75=quantile(pc.Gas.wCCS, 0.75))
+  summarise(med=median(frac.Gas.wCCS),
+            q25=quantile(frac.Gas.wCCS, 0.25),
+            q75=quantile(frac.Gas.wCCS, 0.75))
 
-png(file=paste0("plots/gas_frac_abated_med_",reg_lab,".png"),width=1200,height=800,res=220,type='cairo')
-ggplot(filter(gas_pc_wCCS, !(Year>2060 & Pathway=="<1.5C")), 
-       aes(x=Year)) +
-  geom_ribbon(aes(ymin=q25, ymax=q75, group=Pathway, fill=Pathway), alpha=0.3) +
+gas_pc_wCCS_ind <- runs %>% filter(Year %in% c(2020, 2030, 2040, 2050, 2060, 2070, 2080, 2090, 2100),
+                                    mod_scen %in% gas_ms_keep,
+                                    cat2 %in% "<1.5C",
+                                   pc.Gas > min_2050_gas) %>%
+  select(Year, cat2, mod_scen, pc.Coal, SecondaryEnergy.Electricity.Gas.wCCS, SecondaryEnergy.Electricity.Gas) %>%
+  mutate(frac.Gas.wCCS = 100*SecondaryEnergy.Electricity.Gas.wCCS/SecondaryEnergy.Electricity.Gas) %>%
+  #mutate(frac.Bio.wCCS = ifelse(pc.Biomass<1, NA, frac.Bio.wCCS)) %>% # make bio abated frac NA if bio provides < a certain % of all electricity
+  select(Year, cat2, mod_scen, frac.Gas.wCCS) %>%
+  #filter(Year %in% c(2030, 2040)) %>%
+  drop_na() %>%
+  rename(Pathway = cat2) %>%
+  mutate(Pathway = ifelse(Pathway == "<1.5C", "1.5C", 
+                          ifelse(Pathway == "1.5-2C", "2C", NA)))
+
+# PLOT
+png(file=paste0("plots/gas_frac_abated_min_",min_2050_gas,"_",reg_lab,".png"),width=1200,height=800,res=220,type='cairo')
+ggplot(gas_pc_wCCS_med, aes(x=Year)) +  
+  geom_ribbon(aes(ymin=q25, ymax=q75, group=Pathway), alpha=0.3, fill="lightblue") +
   geom_line(aes(y=med, group=Pathway, colour=Pathway), size=1) +
+  geom_line(data=gas_pc_wCCS_ind, aes(y=frac.Gas.wCCS, x=Year, group=mod_scen, colour=Pathway), inherit.aes = F, alpha=0.7) +
   #geom_boxplot(outlier.shape = NA) + geom_jitter(width = 0.1) +
-  labs(y="", x="", title="Percentage of gas generation abated", 
-       subtitle=paste0("Region: ",reg_lab,"\n",t_lab)) +
+  labs(y="Percentage abated", x="", title="Half of remaining gas generation is abated by 2040, rising to 75% by 2040.", 
+       subtitle=paste0("Models that provide >",min_2050_gas,"% of electricity from gas in 2050")) +
   theme(text=element_text(size=8),
         axis.text = element_text(size=8)) +
   scale_y_continuous(labels=c("0%", "25%", "50%", "75%", "100%")) +
-  scale_x_continuous(breaks=c(2020,2030,2040,2050,2060,2070,2080,2090), limits=c(2020,2090)) +
+  scale_x_continuous(breaks=c(2020,2030,2040,2050,2060,2070,2080,2090,2100), limits=c(2020,2100)) +
   theme(text=element_text(size=8),
         axis.text = element_text(size=8),
         legend.text = element_text(size=9)) 
 dev.off()
+
 # ---- CCS by fuel and 1.5C vs 2C ----
 #png(file=paste0("plots/elec_demand_ppchange_2020-30-50_",str_replace(t_lab,"<",""),".png"),width=1400,height=1000,res=220,type='cairo')
 runs %>% 
