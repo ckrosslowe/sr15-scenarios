@@ -5,10 +5,13 @@ library(viridis)
 library(cowplot)
 #library(plotly)
 library(gganimate)
+library(grid)
+
 
 theme_set(
   theme_minimal() +
-    theme(legend.position = "right",
+    theme(text = element_text(colour="grey10"),
+          legend.position = "right",
           panel.grid.major.x = element_blank(),
           panel.grid.minor.x = element_blank(),
           panel.grid.minor.y = element_blank(), 
@@ -34,7 +37,8 @@ fuel_cols <- c("Wind"="#FF624E", "#E41A1C", # Red - Wind
                "Other renewable"="#F98BC5", # Pink - Other renewables
                "Hydro"="#6CE3E5", #00CED1  # Dark turquoise - Hydro
                "Coal"="#2F4F4F",
-               "Other"="#77bbd1")
+               "Other"="#77bbd1",
+               "All"="#9AA6A6")
 
 # Variables explained here https://data.ene.iiasa.ac.at/iamc-1.5c-explorer/#/docs
 
@@ -59,8 +63,8 @@ meta <- read_excel("data/sr15_metadata_indicators_r2.0.xlsx", sheet="meta") %>%
 # Read model data
 runs_clean <- read.csv("data/runs_clean.csv", header=T, stringsAsFactors = F) %>%
   #left_join(meta[c("mod_scen", "category")], by="mod_scen") %>%
-  mutate(cat2 = ifelse(category %in% c("1.5C low overshoot", "Below 1.5C"), "<1.5C",
-                       ifelse(category %in% c("1.5C high overshoot", "Lower 2C"), "1.5-2C", category)),
+  mutate(cat2 = ifelse(category %in% c("1.5C low overshoot", "Below 1.5C"), "1.5C",
+                       ifelse(category %in% c("1.5C high overshoot", "Lower 2C"), "2C", category)),
          category = factor(category, ordered=T, levels=c("Below 1.5C", "1.5C low overshoot", "1.5C high overshoot", "Lower 2C", "Higher 2C", "Above 2C", "no-climate-assessment")))
 
 
@@ -91,7 +95,8 @@ ger_pc_regions <- ger %>% filter(Year > 2010) %>%
          pc.Solar=100*Solar/Total,
          pc.Wind=100*Wind/Total,
          pc.Hydro=100*Hydro/Total,
-         pc.Nuclear=100*Nuclear/Total)
+         pc.Nuclear=100*Nuclear/Total,
+         pc.Biomass=100*Biomass/Total)
 
 ger_pc_sum <- ger %>% filter(Year > 2010) %>%
   group_by(Type2, Year) %>%
@@ -105,7 +110,8 @@ ger_pc_sum <- ger %>% filter(Year > 2010) %>%
          pc.Solar=100*Solar/Total,
          pc.Wind=100*Wind/Total,
          pc.Hydro=100*Hydro/Total,
-         pc.Nuclear=100*Nuclear/Total) %>%
+         pc.Nuclear=100*Nuclear/Total,
+         pc.Biomass=100*Biomass/Total) %>%
          bind_rows(ger_pc_regions)
 
 # ==== Test variable assumptions ====
@@ -156,12 +162,12 @@ if (t_lab %in% "<2C")    temp_cats <- c("1.5C low overshoot", "Below 1.5C", "1.5
 #if (t_lab %in% "1.5-2C") temp_cats <- c("1.5C high overshoot", "Lower 2C", "Higher 2C")
 if (t_lab %in% "1.5-2C") temp_cats <- c("1.5C high overshoot", "Lower 2C")
 
-#reg <- "World"
+reg <- "World"
 #reg <- "R5OECD90+EU"
 #reg <- "R5MAF"
 #reg <- "R5ASIA"
 #reg <- "R5LAM"
-reg <- "R5REF"
+#reg <- "R5REF"
 #reg <- "R5ROWO"
 
 reg_lab <- regions$reg_lab[regions$region %in% reg]
@@ -1204,7 +1210,9 @@ runs %>% select(mod_scen,
   labs(y="2030-2020 (TWh)", x="", fill="Fuel",
        title="Difference in electricity production by fuel, 2020-2030", 
        subtitle=paste0(reg_lab,", ",t_lab)) +
-  theme(axis.text.x = element_text(angle=45, hjust=1)) +
+  theme(text = element_text(size=8),
+        axis.text.x = element_text(angle=45, hjust=1)
+        ) +
   scale_fill_manual(values=fuel_cols)
 dev.off()
 
@@ -1395,18 +1403,43 @@ dev.off()
 ######### MULTI-SAMPLE PLOTS #########
 
 # ---- Electricity demand ----
-#SecondaryEnergy|Electricity
+# SecondaryEnergy|Electricity
 png(file=paste0("plots/elec_demand_",reg_lab,".png"),width=1200,height=800,res=200,type='cairo')
-runs %>% select(mod_scen, Year, cat2, SecondaryEnergy.Electricity) %>%
-  filter(!is.na(SecondaryEnergy.Electricity)) %>%
-  ggplot(aes(x=Year, y=SecondaryEnergy.Electricity, group=mod_scen)) +
-  geom_line(aes(colour=cat2), size=1, alpha=0.6) +
-  labs(x="", y="Demand (EJ)", title="Electricity demand", colour="Warming", 
-       subtitle=reg_lab) +
-  coord_cartesian(xlim=c(2020,2100), ylim=c(0, 700)) +
-  scale_colour_viridis(discrete=T)
+elec_demand <- runs %>% select(mod_scen, Year, cat2, FinalEnergy.Electricity) %>%
+  filter(!is.na(FinalEnergy.Electricity)) %>%
+  ggplot(aes(x=Year, y=278*FinalEnergy.Electricity, group=mod_scen)) +
+  geom_line(aes(colour=cat2), size=0.8, alpha=0.6) +
+  labs(x="", y="", title="Electricity demand", colour="Warming", 
+       subtitle=paste0(reg_lab, " (TWh)")) +
+  theme(axis.text.x = element_text(face="bold")) +
+  coord_cartesian(xlim=c(2020,2050), ylim=c(15000, 85000)) +
+  scale_y_continuous(breaks=c(20000, 40000, 60000, 80000), labels=c("20,000", "40,000", "60,000", "80,000")) +
+  scale_colour_viridis(discrete=T) +
+  guides(colour = F)
+elec_demand
 #colorRampPalette()
 dev.off()
+
+# Electrification
+png(file=paste0("plots/electrification_",reg_lab,".png"),width=1200,height=800,res=200,type='cairo')
+elec_share <- runs %>% select(mod_scen, Year, cat2, FinalEnergy.Electricity, FinalEnergy) %>%
+  drop_na() %>%
+  ggplot(aes(x=Year, y=100*FinalEnergy.Electricity/FinalEnergy, group=mod_scen)) +
+  geom_line(aes(colour=cat2), size=0.8, alpha=0.6) +
+  labs(x="", y="", title="Electrification", colour="Warming", 
+       subtitle=paste0("Share of final energy from electricity")) +
+  theme(axis.text.x = element_text(face="bold")) +
+  coord_cartesian(xlim=c(2020,2050), ylim=c(15,62)) +
+  scale_y_continuous(breaks=c(20, 40, 60), labels=c("20%","40%","60%")) +
+  scale_colour_viridis(discrete=T)
+#colorRampPalette()
+elec_share
+dev.off()
+
+png(file=paste0("plots/electricity_demand_share_",reg_lab,".png"),width=1400,height=700,res=200,type='cairo')
+plot_grid(elec_demand, elec_share, nrow=1, rel_widths=c(0.8, 1))
+dev.off()
+
 # ---- Electricity emissions ----
 raw_runs <- runs %>%
   select(Year,
@@ -1969,6 +2002,30 @@ renew_pc_sum <- runs %>%
   mutate(Type="Renewables_share")
 
 
+# ---- 1.5 vs 2C fuel share in 2050 ----
+yr <- 2050
+pc.today <- filter(ger_pc_sum, 
+                   Region_ipcc %in% reg_lab,
+                   Year == 2019) %>%
+  select(pc.Hydro, pc.Wind, pc.Solar, pc.Nuclear, pc.Biomass, pc.Gas, pc.Coal) %>%
+  pivot_longer(pc.Hydro:pc.Coal, names_to="Fuel", values_to="pc.Gen", names_prefix="pc.") %>%
+  mutate(Col="2019")
+
+png(file=paste0("plots/electricity_mix_",yr,"_",reg_lab,".png"),width=1400,height=900,res=200,type='cairo')
+runs %>% filter(Year == yr) %>%
+  select(cat2, pc.Wind, pc.Solar, pc.Hydro, pc.Nuclear, pc.Coal, pc.Gas, pc.Biomass) %>%
+  pivot_longer(pc.Wind:pc.Biomass, names_to="Fuel", values_to="pc.Gen", names_prefix = "pc.") %>%
+  mutate(Fuel = factor(Fuel, ordered=T, levels=c("Wind", "Solar", "Hydro", "Nuclear", "Gas", "Biomass", "Coal"))) %>%
+  ggplot(aes(x=Fuel, y=pc.Gen, colour=cat2)) +
+  geom_boxplot() +
+  geom_point(data=pc.today, aes(x=Fuel, y=pc.Gen, fill=Col), inherit.aes = F, size=4, shape=23, colour="grey20") +
+  scale_fill_manual(values=c("2019"="springgreen2")) +
+  scale_y_continuous(breaks=c(0, 10, 20, 30, 40, 50, 60), labels=c("0%","10%", "20%", "30%", "40%", "50%", "60%")) +
+  labs(x="", y="Share of electricity production", colour="", fill="", 
+       title=paste0("Electricity mix in ",yr), 
+       subtitle=reg_lab)
+dev.off()
+
 # ---- Fossil CCS ----
 yr <- 2070
 png(file=paste0("plots/fossil_wCCS_",yr,"_",reg_lab,".png"),width=1200,height=600,res=200,type='cairo')
@@ -2320,6 +2377,149 @@ runs %>%
 anim_save("plots/CCS_gen_animation.gif")
 
 #dev.off()
+# ---- Hydrogen production vs RES electricity ----
+
+# Basic histogram of Hydrogen (Elec) TWh
+hist(278*runs$SecondaryEnergy.Hydrogen.Electricity[!is.na(runs$SecondaryEnergy.Hydrogen.Electricity) & runs$Year==2050])
+
+# Gross RES TWh
+runs %>% filter(Year == 2050) %>%
+  select(cat2, 
+         SecondaryEnergy.Electricity.Solar, 
+         SecondaryEnergy.Electricity.Wind,
+         SecondaryEnergy.Hydrogen.Electricity) %>%
+  drop_na() %>%
+  ggplot(aes(x=278*SecondaryEnergy.Hydrogen.Electricity, 
+             y=278*(SecondaryEnergy.Electricity.Wind + SecondaryEnergy.Electricity.Solar),
+             colour=cat2)) +
+  geom_point()
+  lims(y=c(0,65000))
+
+# RES penetration (% of electricity)
+runs %>% filter(Year == 2050) %>%
+    select(cat2, 
+           pc.Solar, 
+           pc.Wind,
+           SecondaryEnergy.Hydrogen.Electricity) %>%
+    drop_na() %>%
+    ggplot(aes(x=278*SecondaryEnergy.Hydrogen.Electricity, 
+               y=pc.Wind + pc.Solar,
+               colour=cat2)) +
+    geom_point()
+  lims(y=c(0,100))
+
+  
+# ---- Electricity demand vs electrification ----
+png(file=paste0("plots/electrification_vs_demand_2050_",reg_lab,".png"),width=1200,height=800,res=200,type='cairo')
+runs %>% filter(Year == 2050) %>%
+    select(cat2, FinalEnergy, FinalEnergy.Electricity) %>%
+    ggplot(aes(x=278*FinalEnergy.Electricity, 
+               y=100*FinalEnergy.Electricity/FinalEnergy,
+               colour=cat2)) +
+    geom_point(size=2) +
+    lims(y=c(0,70)) +
+    labs(x="Electricity Generation (TWh)",
+         y="Electrification\n(electricity share of final energy)",
+         colour="",
+         title="Electrification is only a weak driver of electricity demand to 2050")
+dev.off()
+  
+runs %>% filter(Year %in% seq(2020,2100,10)) %>%
+    select(cat2, Year, FinalEnergy, FinalEnergy.Electricity) %>%
+    ggplot(aes(x=278*FinalEnergy.Electricity, 
+               y=100*FinalEnergy.Electricity/FinalEnergy,
+               colour=cat2)) +
+    geom_point() +
+    lims(y=c(0,100)) +
+    labs(x="Electricity Generation (TWh)",
+         y="Electrification\n(electricity share of final energy)",
+         colour="",
+         title="{frame_time}") +
+    transition_time(Year) +
+    ease_aes('linear')
+
+
+# ---- TWh changes by fuel ----
+png(file=paste0("plots/elec_change_2020-2030_allmod_",reg_lab,".png"),width=1400,height=900,res=200,type='cairo')
+fuel_chng <- runs %>% select(mod_scen, 
+                Year,
+                cat2,
+                SecondaryEnergy.Electricity.Coal,
+                SecondaryEnergy.Electricity.Gas,
+                SecondaryEnergy.Electricity.Wind,
+                SecondaryEnergy.Electricity.Solar,
+                SecondaryEnergy.Electricity.Biomass,
+                SecondaryEnergy.Electricity.Nuclear) %>%
+  #SecondaryEnergy.Electricity.Gas.wCCS) %>%
+  filter(Year %in% c(2020, 2030)) %>%
+  #replace(is.na(.), 0) %>% # replace missing emissions with zero, for sums
+  rename(Coal = SecondaryEnergy.Electricity.Coal,
+         Gas = SecondaryEnergy.Electricity.Gas,
+         Wind = SecondaryEnergy.Electricity.Wind,
+         Solar = SecondaryEnergy.Electricity.Solar,
+         Biomass = SecondaryEnergy.Electricity.Biomass,
+         Nuclear = SecondaryEnergy.Electricity.Nuclear) %>%
+  #Gas.wCCS = SecondaryEnergy.Electricity.Gas.wCCS) %>%
+  pivot_longer(Coal:Nuclear, names_to = "Fuel", values_to="EJ") %>%
+  pivot_wider(names_from = Year, values_from = EJ, names_prefix = "y") %>%
+  mutate(diff20_30 = y2030-y2020) %>%
+  mutate(mod_scen = str_replace(mod_scen, "\\|", "\n")) %>%
+  ggplot(aes(x=mod_scen, y=diff20_30*278, fill=Fuel)) + #levels=c("Other", "Industry.Process", "Transport", "Buildings", "Industry.Combustion", "AFOLU", "Electricity")))) +
+  geom_bar(stat='identity') +
+  facet_grid(~cat2, scales="free_x", space="free") +
+  #facet_wrap(~cat2, scales="free_x", dir="h") +
+  labs(y="2030-2020 (TWh)", x="", fill="Fuel",
+       title=""
+  ) +
+  theme(text = element_text(size=7),
+        axis.text.x = element_blank(),
+        legend.text = element_text(size=7),
+        strip.text = element_blank(),
+        legend.position = "bottom",
+        legend.direction = "horizontal",
+        legend.box.spacing = unit(0,"cm"),
+        plot.margin = margin(0, 5.5, 5.5, 5.5) #trbl
+        #axis.text.x = element_text(angle=45, hjust=1)
+  ) +
+  scale_fill_manual(values=fuel_cols) +
+  scale_y_continuous(breaks=c(-10000, -5000, 0, 5000, 10000))
+fuel_chng
+dev.off()
+
+tot_chng <- runs %>% select(mod_scen, 
+                            Year,
+                            cat2,
+                            All = SecondaryEnergy.Electricity) %>%
+  #SecondaryEnergy.Electricity.Gas.wCCS) %>%
+  filter(Year %in% c(2020, 2030)) %>%
+  #Gas.wCCS = SecondaryEnergy.Electricity.Gas.wCCS) %>%
+  pivot_wider(names_from = Year, values_from = All, names_prefix = "y") %>%
+  mutate(diff20_30 = y2030-y2020) %>%
+  mutate(mod_scen = str_replace(mod_scen, "\\|", "\n")) %>%
+  ggplot(aes(x=mod_scen, y=diff20_30*278)) + #levels=c("Other", "Industry.Process", "Transport", "Buildings", "Industry.Combustion", "AFOLU", "Electricity")))) +
+  geom_bar(stat='identity', fill="#9AA6A6") +
+  facet_grid(~cat2, scales="free_x", space="free") +
+  #facet_wrap(~cat2, scales="free_x", dir="h") +
+  labs(y="", x="",
+       title=paste0("Changes in electricity production, 2020-2030: ",reg_lab)
+  ) +
+  theme(text = element_text(size=8),
+        axis.text.x = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.y = element_blank(),
+        legend.text = element_text(size=7),
+        strip.text = element_text(size=10, face="bold"),
+        panel.grid.major.y=element_blank(),
+        plot.margin = margin(5.5, 5.5, 0, 27)
+        #axis.text.x = element_text(angle=45, hjust=1)
+  ) +
+  scale_fill_manual(values=fuel_cols)
+tot_chng
+
+png(file=paste0("plots/elec_change_2020-2030_allmod_net_",reg_lab,".png"),width=1200,height=1000,res=200,type='cairo')
+plot_grid(tot_chng, fuel_chng, nrow=2, rel_heights = c(0.36,1))
+dev.off()
+
 ######### OUTLIERS ############
 # ---- High coal ----
 # Histogram of coal in given year <1.5C
