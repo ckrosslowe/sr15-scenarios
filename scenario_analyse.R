@@ -1440,6 +1440,21 @@ png(file=paste0("plots/electricity_demand_share_",reg_lab,".png"),width=1400,hei
 plot_grid(elec_demand, elec_share, nrow=1, rel_widths=c(0.8, 1))
 dev.off()
 
+png(file=paste0("plots/res-penetration_",reg_lab,".png"),width=1200,height=800,res=200,type='cairo')
+runs %>% select(mod_scen, Year, cat2, SecondaryEnergy.Electricity, SecondaryEnergy.Electricity.Wind, SecondaryEnergy.Electricity.Solar) %>%
+  drop_na() %>%
+  ggplot(aes(x=Year, y=100*(SecondaryEnergy.Electricity.Wind + SecondaryEnergy.Electricity.Solar)/SecondaryEnergy.Electricity, group=mod_scen)) +
+  geom_line(aes(colour=cat2), size=0.8, alpha=0.6) +
+  labs(x="", y="", title="RES penetration vs demand", colour="Warming" 
+       #subtitle=paste0("Share of final energy from electricity")
+       ) +
+  theme(axis.text.x = element_text(face="bold")) +
+  #coord_cartesian(xlim=c(2020,2050), ylim=c(15,62)) +
+  #scale_y_continuous(breaks=c(20, 40, 60), labels=c("20%","40%","60%")) +
+  scale_colour_viridis(discrete=T)
+#colorRampPalette()
+dev.off()
+
 # ---- Electricity emissions ----
 raw_runs <- runs %>%
   select(Year,
@@ -1497,7 +1512,7 @@ dev.off()
 # Box plots - Nuclear
 
 yr <- 2030
-hist(runs$pc.Nuclear[runs$Year == yr], 20, main=paste("% nuclear in",yr,"(<2C)"), xlab="", ylab="")
+hist(runs$pc.Nuclear[runs$Year == yr], 20, main=paste("% nuclear in",yr), xlab="", ylab="")
 m_nuc <- median(runs$pc.Nuclear[runs$Year == yr], na.rm=T)
 q33_nuc <- quantile(runs$pc.Nuclear[runs$Year == yr], 0.33, na.rm=T)
 q66_nuc <- quantile(runs$pc.Nuclear[runs$Year == yr], 0.66, na.rm=T)
@@ -1510,12 +1525,11 @@ sum(runs$pc.Nuclear[runs$Year == yr] > q66_nuc)
 # Low nuclear runs, re-shaped for boxplot
 low_nuc_runs <- runs %>% 
   filter(Year==yr,
-         pc.Nuclear < q33_nuc) %>%
+         pc.Nuclear < m_nuc) %>%
   select(pc.Coal,
-         pc.Gas.woCCS,
-         pc.Renewables,
-         pc.Biomass) %>%
-  pivot_longer(pc.Coal:pc.Biomass,
+         pc.Gas,
+         pc.Renewables) %>%
+  pivot_longer(pc.Coal:pc.Renewables,
                names_to="Fuel",
                values_to="Gen_pc",
                names_prefix="pc.") %>%
@@ -1523,12 +1537,11 @@ low_nuc_runs <- runs %>%
 
 high_nuc_runs <- runs %>% 
   filter(Year==yr,
-         pc.Nuclear > q66_nuc) %>%
+         pc.Nuclear > m_nuc) %>%
   select(pc.Coal,
-         pc.Gas.woCCS,
-         pc.Renewables,
-         pc.Biomass) %>%
-  pivot_longer(pc.Coal:pc.Biomass,
+         pc.Gas,
+         pc.Renewables) %>%
+  pivot_longer(pc.Coal:pc.Renewables,
                names_to="Fuel",
                values_to="Gen_pc",
                names_prefix="pc.") %>%
@@ -1540,33 +1553,32 @@ png(file=paste0("plots/nuclear_trade-off_",reg_lab,"_",yr,".png"),width=1200,hei
 runs %>%
   filter(Year==yr) %>%
   select(pc.Coal,
-         pc.Gas.woCCS,
-         pc.Renewables,
-         pc.Biomass) %>%
-  pivot_longer(pc.Coal:pc.Biomass,
+         pc.Gas,
+         pc.Renewables) %>%
+  pivot_longer(pc.Coal:pc.Renewables,
                names_to="Fuel",
                values_to="Gen_pc",
                names_prefix="pc.") %>%
   mutate(Sample="All") %>%
   bind_rows(low_nuc_runs) %>%
   bind_rows(high_nuc_runs) %>%
-  mutate(Fuel=ifelse(Fuel %in% "Gas.woCCS", "Gas (no CCS)", Fuel)) %>%
+  #mutate(Fuel=ifelse(Fuel %in% "Gas.woCCS", "Gas (no CCS)", Fuel)) %>%
   ggplot(aes(x=Fuel, y=Gen_pc)) +
   geom_boxplot(aes(colour=Sample), varwidth=T) +
   labs(x="", y="% electricity generation", title=paste("Share of generation in",yr), subtitle=paste0(reg_lab,", ",t_lab)) 
 dev.off()
 
 # Do 'low nuclear' and 'high nuclear' differ significantly in the amount of Gas or renewables needed?
-ks.test(runs$pc.Gas.woCCS[runs$Year==yr & runs$pc.Nuclear < q33_nuc], runs$pc.Gas.woCCS[runs$Year==yr])
-ks.test(runs$pc.Gas.woCCS[runs$Year==yr & runs$pc.Nuclear > q66_nuc], runs$pc.Gas.woCCS[runs$Year==yr])
-ks.test(runs$pc.Renewables[runs$Year==yr & runs$pc.Nuclear < q33_nuc], runs$pc.Renewables[runs$Year==yr])
-ks.test(runs$pc.Renewables[runs$Year==yr & runs$pc.Nuclear > q66_nuc], runs$pc.Renewables[runs$Year==yr])
+ks.test(runs$pc.Gas[runs$Year==yr & runs$pc.Nuclear < m_nuc], runs$pc.Gas[runs$Year==yr])
+ks.test(runs$pc.Gas[runs$Year==yr & runs$pc.Nuclear > m_nuc], runs$pc.Gas[runs$Year==yr])
+ks.test(runs$pc.Renewables[runs$Year==yr & runs$pc.Nuclear < m_nuc], runs$pc.Renewables[runs$Year==yr])
+ks.test(runs$pc.Renewables[runs$Year==yr & runs$pc.Nuclear > m_nuc], runs$pc.Renewables[runs$Year==yr])
 
 
-# Fossil CCS
+# Fossil CCS - electricity mix
 yr <- 2050
 # Low Fossil CCS runs, re-shaped for boxplot
-low_fccs_runs <- runs %>% 
+low_pc_fccs_runs <- runs %>% 
   filter(Year==yr,
          pc.Fossil.wCCS < 15) %>%
   select(pc.Nuclear,
@@ -1577,7 +1589,7 @@ low_fccs_runs <- runs %>%
                names_prefix="pc.") %>%
   mutate(Sample="Low fossil-CCS")
 # High Fossil CCS runs, re-shaped for boxplot
-high_fccs_runs <- runs %>% 
+high_pc_fccs_runs <- runs %>% 
   filter(Year==yr,
          pc.Fossil.wCCS > 15) %>%
   select(pc.Nuclear,
@@ -1588,7 +1600,7 @@ high_fccs_runs <- runs %>%
                names_prefix="pc.") %>%
   mutate(Sample="High fossil-CCS")
 
-png(file=paste0("plots/fossil_ccs_trade-offs_",reg_lab,"_",yr,".png"),width=1200,height=800,res=200,type='cairo')
+png(file=paste0("plots/fossil_ccs_pc_trade-offs_",reg_lab,"_",yr,".png"),width=1200,height=800,res=200,type='cairo')
 runs %>%
   filter(Year==yr) %>%
   select(pc.Nuclear,
@@ -1599,8 +1611,8 @@ runs %>%
                values_to="Gen_pc",
                names_prefix="pc.") %>%
   mutate(Sample="All") %>%
-  bind_rows(low_fccs_runs) %>%
-  bind_rows(high_fccs_runs) %>%
+  bind_rows(low_pc_fccs_runs) %>%
+  bind_rows(high_pc_fccs_runs) %>%
   mutate(Fuel=ifelse(Fuel %in% "Biomass.wCCS", "BECCS", Fuel)) %>%
   ggplot(aes(x=Fuel, y=Gen_pc)) +
   geom_boxplot(aes(colour=Sample), varwidth=T) +
@@ -1613,6 +1625,67 @@ ks.test(runs$pc.Nuclear[runs$Year==yr & runs$pc.Fossil.wCCS < 15], runs$pc.Nucle
 ks.test(runs$pc.Nuclear[runs$Year==yr & runs$pc.Fossil.wCCS > 15], runs$pc.Nuclear[runs$Year==yr]) #p=0.07
 ks.test(runs$pc.Renewables[runs$Year==yr & runs$pc.Fossil.wCCS < 15], runs$pc.Renewables[runs$Year==yr]) #p=0.21
 ks.test(runs$pc.Renewables[runs$Year==yr & runs$pc.Fossil.wCCS > 15], runs$pc.Renewables[runs$Year==yr]) #p=0.04 - this is the only significant result. High fossil CCS have lower renewables. 
+
+# Fossil CCS - electricity demand
+yr <- 2050
+med_fccs <- median(runs$CarbonSequestration.CCS.Fossil[runs$Year==yr], na.rm=T)
+# Low Fossil CCS runs, re-shaped for boxplot
+low_fccs_runs <- runs %>% 
+  filter(Year==yr,
+         CarbonSequestration.CCS.Fossil < med_fccs) %>% 
+  mutate(VRES = SecondaryEnergy.Electricity.Wind + SecondaryEnergy.Electricity.Solar) %>%
+  select(Nuclear = SecondaryEnergy.Electricity.Nuclear,
+         RES = SecondaryEnergy.Electricity.Renewables,
+         VRES,
+         Demand = FinalEnergy.Electricity) %>%
+  pivot_longer(Nuclear:Demand,
+               names_to="Type",
+               values_to="Gen") %>%
+  mutate(Sample="Low fossil-CCS")
+# High Fossil CCS runs, re-shaped for boxplot
+high_fccs_runs <- runs %>% 
+  filter(Year==yr,
+         CarbonSequestration.CCS.Fossil > med_fccs) %>%
+  mutate(VRES = SecondaryEnergy.Electricity.Wind + SecondaryEnergy.Electricity.Solar) %>%
+  select(Nuclear = SecondaryEnergy.Electricity.Nuclear,
+       RES = SecondaryEnergy.Electricity.Renewables,
+       VRES,
+       Demand = FinalEnergy.Electricity) %>%
+  pivot_longer(Nuclear:Demand,
+               names_to="Type",
+               values_to="Gen") %>%
+  mutate(Sample="High fossil-CCS")
+
+png(file=paste0("plots/fossil_ccs_demand_trade-offs_",reg_lab,"_",yr,".png"),width=1200,height=800,res=200,type='cairo')
+runs %>%
+  filter(Year==yr) %>%
+  mutate(VRES = SecondaryEnergy.Electricity.Wind + SecondaryEnergy.Electricity.Solar) %>%
+  select(Nuclear = SecondaryEnergy.Electricity.Nuclear,
+         RES = SecondaryEnergy.Electricity.Renewables,
+         VRES,
+         Demand = FinalEnergy.Electricity) %>%
+  pivot_longer(Nuclear:Demand,
+               names_to="Type",
+               values_to="Gen") %>%
+  mutate(Sample="All") %>%
+  bind_rows(low_fccs_runs) %>%
+  bind_rows(high_fccs_runs) %>%
+  ggplot(aes(x=Type, y=Gen)) +
+  geom_boxplot(aes(colour=Sample), varwidth=T) +
+  labs(x="", y="Electricity generation", title=paste("Electricity generation in",yr) 
+       #subtitle=paste0(reg_lab,", ",t_lab)
+  ) 
+dev.off()
+
+ks.test(runs$SecondaryEnergy.Electricity.Nuclear[runs$Year==yr & runs$CarbonSequestration.CCS.Fossil < med_fccs], runs$SecondaryEnergy.Electricity.Nuclear[runs$Year==yr])
+ks.test(runs$SecondaryEnergy.Electricity.Nuclear[runs$Year==yr & runs$CarbonSequestration.CCS.Fossil > med_fccs], runs$SecondaryEnergy.Electricity.Nuclear[runs$Year==yr])
+ks.test(runs$SecondaryEnergy.Electricity.Renewables[runs$Year==yr & runs$CarbonSequestration.CCS.Fossil < med_fccs], runs$SecondaryEnergy.Electricity.Renewables[runs$Year==yr])
+ks.test(runs$SecondaryEnergy.Electricity.Renewables[runs$Year==yr & runs$CarbonSequestration.CCS.Fossil > med_fccs], runs$SecondaryEnergy.Electricity.Renewables[runs$Year==yr])
+ks.test(runs$SecondaryEnergy.Electricity.Wind[runs$Year==yr & runs$CarbonSequestration.CCS.Fossil < med_fccs] + runs$SecondaryEnergy.Electricity.Solar[runs$Year==yr & runs$CarbonSequestration.CCS.Fossil < med_fccs], runs$SecondaryEnergy.Electricity.Renewables[runs$Year==yr])
+ks.test(runs$SecondaryEnergy.Electricity.Wind[runs$Year==yr & runs$CarbonSequestration.CCS.Fossil > med_fccs] + runs$SecondaryEnergy.Electricity.Solar[runs$Year==yr & runs$CarbonSequestration.CCS.Fossil > med_fccs], runs$SecondaryEnergy.Electricity.Renewables[runs$Year==yr])
+ks.test(runs$FinalEnergy.Electricity[runs$Year==yr & runs$CarbonSequestration.CCS.Fossil < med_fccs], runs$FinalEnergy.Electricity[runs$Year==yr])
+ks.test(runs$FinalEnergy.Electricity[runs$Year==yr & runs$CarbonSequestration.CCS.Fossil > med_fccs], runs$FinalEnergy.Electricity[runs$Year==yr])
+
 
 # ---- Biomass changes ----
 # Biomass only
@@ -2335,7 +2408,8 @@ ggplot(gas_pc_wCCS_med, aes(x=Year)) +
 dev.off()
 
 # ---- CCS by fuel and 1.5C vs 2C ----
-#png(file=paste0("plots/elec_demand_ppchange_2020-30-50_",str_replace(t_lab,"<",""),".png"),width=1400,height=1000,res=220,type='cairo')
+
+# Animation - CCS generation by fuel
 runs %>% 
   filter(Year %in% c(2020, 2030, 2040, 2050, 2060, 2070, 2080, 2090, 2100)) %>%
   select(mod_scen, Year, cat2, CarbonSequestration.CCS.Biomass, CarbonSequestration.CCS.Fossil) %>%
@@ -2357,6 +2431,7 @@ anim_save("plots/carbonSeq_animation.gif")
   #scale_y_continuous(breaks=c(0, 10, 20, 30, 40), labels = c("0%", "10%", "20%", "30%", "40%")) +
   #scale_x_discrete((labels=c("")))
 
+# Animation - CCS share by fuel
 runs %>% 
   filter(Year %in% c(2020, 2030, 2040, 2050, 2060, 2070, 2080, 2090, 2100)) %>%
   select(mod_scen, Year, cat2, pc.Biomass.wCCS, pc.Fossil.wCCS) %>%
@@ -2376,7 +2451,71 @@ runs %>%
         title=element_text(size=14))
 anim_save("plots/CCS_gen_animation.gif")
 
-#dev.off()
+# CCS TWh by fuel, 2030, 2050
+png(file=paste0("plots/ccs_byfuel_30_50_",reg_lab,".png"),width=1400,height=1000,res=200,type='cairo')
+runs %>% select(mod_scen, 
+                Year,
+                cat2,
+                SecondaryEnergy.Electricity.Biomass.wCCS,
+                SecondaryEnergy.Electricity.Gas.wCCS,
+                SecondaryEnergy.Electricity.Coal.wCCS
+                ) %>%
+  #SecondaryEnergy.Electricity.Gas.wCCS) %>%
+  filter(Year %in% c(2030, 2050)) %>%
+  #replace(is.na(.), 0) %>% # replace missing emissions with zero, for sums
+  rename(Coal = SecondaryEnergy.Electricity.Coal.wCCS,
+         Gas = SecondaryEnergy.Electricity.Gas.wCCS,
+         Biomass = SecondaryEnergy.Electricity.Biomass.wCCS) %>%
+  #Gas.wCCS = SecondaryEnergy.Electricity.Gas.wCCS) %>%
+  pivot_longer(Coal:Biomass, names_to = "Fuel", values_to="Gen") %>%
+  #mutate(mod_scen = str_replace(mod_scen, "\\|", "\n")) %>%
+  ggplot(aes(x=mod_scen, y=278*Gen, fill=Fuel)) + 
+  geom_bar(stat='identity') +
+  facet_grid(rows=vars(Year), cols=vars(cat2), scales="free", space="free", switch="y") +
+  #facet_wrap(~cat2, scales="free_x", dir="h") +
+  labs(y="Generation with CCS (TWh)\n ", x="Pathways", fill="",
+       title=""
+  ) +
+  theme(text = element_text(size=10),
+        axis.text.x = element_blank(),
+        legend.text = element_text(size=10),
+        strip.text = element_text(size=11, face="bold"),
+        strip.text.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0)),
+        panel.spacing = unit(2, "lines"),
+        legend.position = "bottom",
+        legend.direction = "horizontal",
+        #axis.title.y = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0))
+        #legend.position = "bottom",
+        #legend.direction = "horizontal",
+        #legend.box.spacing = unit(0,"cm"),
+        #plot.margin = margin(0, 5.5, 5.5, 5.5) #trbl
+        #axis.text.x = element_text(angle=45, hjust=1)
+  ) +
+  scale_fill_manual(values=fuel_cols) +
+  scale_y_continuous(position = "right")
+  #scale_y_continuous(breaks=c(-10000, -5000, 0, 5000, 10000))
+dev.off()
+
+# Count of models using CCS by fuel and year
+png(file=paste0("plots/ccs_count_fuel_year_",reg_lab,".png"),width=1200,height=800,res=200,type='cairo')
+runs %>% select(mod_scen, 
+                Year,
+                cat2,
+                Biomass = CarbonSequestration.CCS.Biomass,
+                Fossil = CarbonSequestration.CCS.Fossil
+                ) %>%
+  filter(Year %in% c(2030, 2050)) %>%
+  pivot_longer(Biomass:Fossil, names_to = "Fuel", values_to="CS") %>%
+  ggplot(aes(x=CS, fill=cat2)) +
+  geom_histogram(binwidth=1000) +
+  labs(x="Carbon Sequestration (MtCO2))", 
+       y="Number of pathways",
+       fill="Warming") +
+  facet_grid(rows=vars(Year), cols=vars(Fuel), scales="free_y") +
+  theme(strip.text = element_text(face="bold", size=12),
+        panel.border = element_rect(colour="grey50", fill=NA))
+dev.off()
+
 # ---- Hydrogen production vs RES electricity ----
 
 # Basic histogram of Hydrogen (Elec) TWh
@@ -2423,6 +2562,21 @@ runs %>% filter(Year == 2050) %>%
          colour="",
          title="Electrification is only a weak driver of electricity demand to 2050")
 dev.off()
+
+png(file=paste0("plots/res-penetration_vs_demand_2050_",reg_lab,".png"),width=1200,height=800,res=200,type='cairo')
+runs %>% filter(Year == 2050) %>%
+  select(cat2, SecondaryEnergy.Electricity, SecondaryEnergy.Electricity.Wind, SecondaryEnergy.Electricity.Solar) %>%
+  ggplot(aes(x=278*SecondaryEnergy.Electricity, 
+             y=100*(SecondaryEnergy.Electricity.Wind + SecondaryEnergy.Electricity.Solar)/SecondaryEnergy.Electricity,
+             colour=cat2)) +
+  geom_point(size=2) +
+  #lims(y=c(0,70)) +
+  labs(x="Electricity Generation (TWh)",
+       y="RES demand",
+       colour=""
+       #title="Electrification is only a weak driver of electricity demand to 2050"
+       )
+dev.off()
   
 runs %>% filter(Year %in% seq(2020,2100,10)) %>%
     select(cat2, Year, FinalEnergy, FinalEnergy.Electricity) %>%
@@ -2438,6 +2592,124 @@ runs %>% filter(Year %in% seq(2020,2100,10)) %>%
     transition_time(Year) +
     ease_aes('linear')
 
+
+# ---- Fossil CCS vs VRES ----
+# Demand (TWh)
+png(file=paste0("plots/fccs_vs_RES_pen_2050_",reg_lab,".png"),width=1200,height=800,res=200,type='cairo')
+runs %>% filter(Year == 2050) %>%
+  select(cat2, CarbonSequestration.CCS.Fossil, SecondaryEnergy.Electricity.Wind, SecondaryEnergy.Electricity.Solar) %>%
+  mutate(VRES = SecondaryEnergy.Electricity.Wind + SecondaryEnergy.Electricity.Solar) %>%
+  ggplot(aes(x=CarbonSequestration.CCS.Fossil,
+             y=278*VRES,
+             colour=cat2)) +
+  geom_point(size=2) +
+  geom_vline(xintercept=3915)
+  #lims(y=c(0,70)) +
+  #labs(x="",
+  #     y="",
+  #     colour="",
+  #     title="")
+dev.off()
+
+png(file=paste0("plots/fccs_vs_pcRES_pen_2050_",reg_lab,".png"),width=1200,height=800,res=200,type='cairo')
+runs %>% filter(Year == 2050) %>%
+  select(cat2, CarbonSequestration.CCS.Fossil, pc.Wind, pc.Solar) %>%
+  mutate(pc.VRES = pc.Wind + pc.Solar) %>%
+  ggplot(aes(x=CarbonSequestration.CCS.Fossil,
+             y=pc.VRES,
+             colour=cat2)) +
+  geom_point(size=2) +
+  geom_vline(xintercept=3915)
+#lims(y=c(0,70)) +
+#labs(x="",
+#     y="",
+#     colour="",
+#     title="")
+dev.off()
+
+png(file=paste0("plots/pcfccs_vs_pcVRES_pen_2050_",reg_lab,".png"),width=1200,height=800,res=200,type='cairo')
+runs %>% filter(Year == 2050) %>%
+  select(cat2, pc.Fossil.wCCS, pc.Wind, pc.Solar) %>%
+  mutate(pc.VRES = pc.Wind + pc.Solar) %>%
+  ggplot(aes(x=pc.Fossil.wCCS,
+             y=pc.VRES,
+             colour=cat2)) +
+  geom_point(size=2) 
+  #geom_vline(xintercept=3915)
+#lims(y=c(0,70)) +
+#labs(x="",
+#     y="",
+#     colour="",
+#     title="")
+dev.off()
+
+png(file=paste0("plots/pcfccs_vs_pcRES_pen_2050_",reg_lab,".png"),width=1200,height=800,res=200,type='cairo')
+runs %>% filter(Year == 2050) %>%
+  select(cat2, pc.Fossil.wCCS, pc.Renewables) %>%
+  rename(pc.RES = pc.Renewables) %>%
+  ggplot(aes(y=pc.Fossil.wCCS,
+             x=pc.RES,
+             colour=cat2)) +
+  geom_point(size=3, alpha=0.7) +
+#geom_vline(xintercept=3915)
+  #lims(y=c(0,110)) +
+  labs(y="Electricity from fossil-CCS (%)",
+       x="Electricity from RES (%)",
+       colour="",
+       title="Higher RES penetration is associated with less fossil-CCS in the power sector in 2050",
+       subtitle="All but one 1.5C model are found in the high-RES, low-fossil group") +
+  theme(title=element_text(size=8),
+        legend.text=element_text(size=10),
+        axis.title=element_text(size=9))
+dev.off()
+
+# ---- Fossil CCS vs VRES ----
+# Share
+png(file=paste0("plots/pcNuc_vs_pcRES_pen_2050_",reg_lab,".png"),width=1200,height=800,res=200,type='cairo')
+runs %>% filter(Year == 2050) %>%
+  select(cat2, pc.Nuclear, pc.Renewables) %>%
+  rename(pc.RES = pc.Renewables) %>%
+  ggplot(aes(y=pc.Nuclear,
+             x=pc.RES,
+             colour=cat2)) +
+  geom_point(size=3, alpha=0.7) +
+  #geom_vline(xintercept=3915)
+  #lims(y=c(0,110)) +
+  labs(y="Electricity from Nuclear (%)",
+       x="Electricity from RES (%)",
+       colour=""
+       #title="Higher RES penetration is associated with less fossil-CCS in the power sector in 2050",
+       #subtitle="All but one 1.5C model are found in the high-RES, low-fossil group"
+       ) +
+  theme(title=element_text(size=8),
+        legend.text=element_text(size=10),
+        axis.title=element_text(size=9))
+dev.off()
+
+# Demand
+png(file=paste0("plots/pcNuc_vs_pcRES_pen_2030_",reg_lab,".png"),width=1200,height=800,res=200,type='cairo')
+runs %>% filter(Year == 2050) %>%
+  select(cat2, SecondaryEnergy.Electricity.Nuclear, SecondaryEnergy.Electricity.Renewables) %>%
+  rename(RES = SecondaryEnergy.Electricity.Renewables,
+         Nuclear = SecondaryEnergy.Electricity.Nuclear) %>%
+  ggplot(aes(y=278*Nuclear,
+             x=278*RES,
+             colour=cat2)) +
+  geom_point(size=3, alpha=0.7) + 
+  #geom_vline(xintercept=6373) +
+  #geom_hline(yintercept=2716) +
+  #geom_vline(xintercept=3915)
+  #lims(y=c(0,110)) +
+  labs(y="Electricity from Nuclear (TWh)",
+       x="Electricity from RES (TWh)",
+       colour="",
+       title="Higher Nuclear production is associated with lower RES production in the power sector in 2030"
+       #subtitle="All but one 1.5C model are found in the high-RES, low-fossil group"
+  ) +
+  theme(title=element_text(size=8),
+        legend.text=element_text(size=10),
+        axis.title=element_text(size=9))
+dev.off()
 
 # ---- TWh changes by fuel ----
 png(file=paste0("plots/elec_change_2020-2030_allmod_",reg_lab,".png"),width=1400,height=900,res=200,type='cairo')
@@ -2520,6 +2792,53 @@ png(file=paste0("plots/elec_change_2020-2030_allmod_net_",reg_lab,".png"),width=
 plot_grid(tot_chng, fuel_chng, nrow=2, rel_heights = c(0.36,1))
 dev.off()
 
+
+
+# ---- Unabated Biomass ----
+
+# ---- TWh ----
+# SecondaryEnergy|Electricity
+#png(file=paste0("plots/elec_demand_",reg_lab,".png"),width=1200,height=800,res=200,type='cairo')
+bio_share <- runs %>% select(mod_scen, Year, cat2, SecondaryEnergy.Electricity.Biomass.woCCS, SecondaryEnergy.Electricity) %>%
+  filter(Year > 2019 & Year < 2051) %>%
+  drop_na() %>%
+  ggplot(aes(x=Year, y=100*SecondaryEnergy.Electricity.Biomass.woCCS/SecondaryEnergy.Electricity, group=mod_scen)) +
+  geom_line(aes(colour=cat2), size=0.8, alpha=0.6) +
+  geom_line(data=filter(ger_pc_sum, Region_ipcc %in% "World"), aes(x=Year, y=pc.Biomass), colour="#60BC5D", size=1.5, inherit.aes = F) + 
+  geom_point(data=filter(ger_pc_sum, Region_ipcc %in% "World", Year==2019), aes(x=Year, y=pc.Biomass), colour="#60BC5D", size=3, inherit.aes = F) +
+  labs(x="", y="", title="", colour="Warming", 
+       subtitle=paste0(reg_lab, " (% generation)")) +
+  theme(axis.text.x = element_text(face="bold")) +
+  coord_cartesian(xlim=c(2010,2050), ylim=c(0, 11)) +
+  #scale_y_continuous(breaks=c(20000, 40000, 60000, 80000), labels=c("20,000", "40,000", "60,000", "80,000")) +
+  scale_colour_viridis(discrete=T) 
+  #guides(colour = F)
+#colorRampPalette()
+#dev.off()
+
+# TWh
+#png(file=paste0("plots/electrification_",reg_lab,".png"),width=1200,height=800,res=200,type='cairo')
+bio_demand <- runs %>% select(mod_scen, Year, cat2, SecondaryEnergy.Electricity.Biomass.woCCS) %>%
+  filter(Year > 2019 & Year < 2051) %>%
+  drop_na() %>%
+  ggplot(aes(x=Year, y=278*SecondaryEnergy.Electricity.Biomass.woCCS, group=mod_scen)) +
+  geom_line(aes(colour=cat2), size=0.8, alpha=0.6) +
+  geom_line(data=filter(ger_sum, Region_ipcc %in% "World", Type2 %in% "Biomass"), aes(x=Year, y=Value_TWh), colour="#60BC5D", size=1.5, inherit.aes = F) + 
+  geom_point(data=filter(ger_sum, Region_ipcc %in% "World", Type2 %in% "Biomass", Year==2019), aes(x=Year, y=Value_TWh), colour="#60BC5D", size=3, inherit.aes = F) +
+  labs(x="", y="", title="Unabated biomass generation", colour="Warming", 
+       subtitle=paste0(reg_lab, " (TWh)")) +
+  theme(axis.text.x = element_text(face="bold")) +
+  coord_cartesian(xlim=c(2010,2050) 
+                  #ylim=c(0, 10)
+                  ) +
+  guides(colour=F) +
+  #scale_y_continuous(breaks=c(20000, 40000, 60000, 80000), labels=c("20,000", "40,000", "60,000", "80,000")) +
+  scale_colour_viridis(discrete=T) 
+#dev.off()
+
+png(file=paste0("plots/biomass_demand_share_",reg_lab,".png"),width=1500,height=700,res=200,type='cairo')
+plot_grid(bio_demand, bio_share, nrow=1, rel_widths=c(0.8, 1))
+dev.off()
 ######### OUTLIERS ############
 # ---- High coal ----
 # Histogram of coal in given year <1.5C
