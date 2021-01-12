@@ -14,7 +14,7 @@ models <- read.csv("data/iamc15_scenario_data_all_regions_r2.0.csv", header=T) %
   mutate(mod_scen = str_c(Model, Scenario, sep=" | ")) 
 
 
-# summarise variable availability
+# OPTIONAL summarise variable availability
 mod_sum <- models %>%
   left_join(meta[c("mod_scen", "category")], by="mod_scen") %>%
   #filter(Region %in% "World") %>%
@@ -171,7 +171,7 @@ runs <- filter(runs, !Model %in% mod_exclude)
 ms <- unique(runs$mod_scen)
 n_ms <- length(ms)
 
-# Replace variables of interest with zero, in the years they report data
+# Replace missing variables of interest with zero, in the years they report data
 for (i in seq(1,n_ms)) {
   # Use Final Energy variable to pick out which years are present in the model
   yrs <- runs$Year[runs$mod_scen %in% ms[i] & !is.na(runs$FinalEnergy)]

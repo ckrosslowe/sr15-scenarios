@@ -8,17 +8,8 @@ library(gganimate)
 library(grid)
 
 
-theme_set(
-  theme_minimal() +
-    theme(text = element_text(colour="grey10"),
-          legend.position = "right",
-          panel.grid.major.x = element_blank(),
-          panel.grid.minor.x = element_blank(),
-          panel.grid.minor.y = element_blank(), 
-          axis.title.x = element_text(margin = margin(t = 10, r = 0, b = 0, l = 0)),
-          axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0))
-    )
-)
+source("../ember_theme/theme_ember.R")
+
 # New comment
 # temp category colour scheme
 temp_cols <- c("Below 1.5C"="steelblue1",
@@ -27,17 +18,20 @@ temp_cols <- c("Below 1.5C"="steelblue1",
                "Lower 2C"="darkorange",
                "Higher 2C"="indianred2")
 
-fuel_cols <- c("Wind"="#FF624E", "#E41A1C", # Red - Wind
-               "Gas"="#3A91D6", #377EB8", # Blue - coal
-               "Biomass"="#60BC5D", #4CAB49  Green - Biomass & waste
-               "Nuclear"="#AA47B9", #984EA3 # Purple - Nuclear
-               #""="#FF7C00", # Orange
-               "Solar"="#FFC300", "#FFD700", # Gold - Solar
-               "Other fossil"="#B76022", #8B4513 # Brown
-               "Other renewable"="#F98BC5", # Pink - Other renewables
-               "Hydro"="#6CE3E5", #00CED1  # Dark turquoise - Hydro
+cat_cols <- c("1.5C"="steelblue1",
+              "2C"="coral")
+
+fuel_cols <- c("Wind"="#FF624E",             #E41A1C, # Red - Wind
+               "Gas"="#3A91D6",              #377EB8, # Blue - coal
+               "Biomass"="#60BC5D",          #4CAB49, # Green - Biomass & waste
+               "Nuclear"="#AA47B9",          #984EA3, # Purple - Nuclear
+                                             #FF7C00, # Orange
+               "Solar"="#FFC300",            #FFD700, # Gold - Solar
+               "Other fossil"="#B76022",     #8B4513, # Brown
+               "Other renewable"="#F98BC5",  # Pink - Other renewables
+               "Hydro"="#6CE3E5",            #00CED1, # Dark turquoise - Hydro
                "Coal"="#2F4F4F",
-               "CCS"="#8dd4eb", #Blue - grey
+               "CCS"="#8dd4eb",              # Blue - grey
                "Other"="#e8b3e8",
                "Other2"="#9AA6A6")
 
@@ -125,6 +119,7 @@ ger_pc_sum <- ger %>% filter(Year > 2010) %>%
          pc.Biomass) %>%
   pivot_longer(pc.Coal:pc.Biomass, names_to="Type", values_to="pc.Gen", names_prefix="pc.")
 
+
 # ==== Test variable assumptions ====
 
 runs_test <- runs_clean %>%
@@ -173,8 +168,8 @@ if (t_lab %in% "<2C")    temp_cats <- c("1.5C low overshoot", "Below 1.5C", "1.5
 #if (t_lab %in% "1.5-2C") temp_cats <- c("1.5C high overshoot", "Lower 2C", "Higher 2C")
 if (t_lab %in% "1.5-2C") temp_cats <- c("1.5C high overshoot", "Lower 2C")
 
-reg <- "World"
-#reg <- "R5OECD90+EU"
+#reg <- "World"
+reg <- "R5OECD90+EU"
 #reg <- "R5MAF"
 #reg <- "R5ASIA"
 #reg <- "R5LAM"
@@ -277,7 +272,7 @@ reg_med_gas_woccs <- runs_comp %>% filter(Year %in% c(2020, 2030, 2040, 2050)) %
 
 ######### ONE SAMPLE PLOTS ############
 
-year_range <- c(2020, 2100)
+year_range <- c(2010, 2100)
 
 # ---- Electricity Variables REFERENCE: ----
 #SecondaryEnergy.Electricity.#SecondaryEnergy.Electricity.Biomass
@@ -1030,8 +1025,21 @@ runs_anim %>% select(SecondaryEnergy.Electricity.Gas, SecondaryEnergy.Electricit
 anim_save("plots/evolution_gas-vs-renew.gif")
 # ---- Sector emissions ----
 
+# Sector colours
+sector_cols <- c("Transport"="#232242",
+                "Agriculture"="#FF5641",
+                "Electricity"="#3A91D6",
+                "Combustion - Industry"="#FFBB14",
+                "Buildings"="#B446C0",
+                "Industrial Processes"="#6CE3E5",
+                #"Industrial Processes"="#F2FF4D",
+                "AFOLU"="#5ABB37",
+                "Storage"="#F98BC5",
+                "Other"="#909090")
+
+
 elec_CO2 <- runs %>%
-  filter(Year %in% seq(2020, 2100, 10)) %>%
+  filter(Year %in% seq(2010, 2100, 10)) %>%
   group_by(Year) %>%
   summarise(med = median(Emissions.CO2.Energy.Supply.Electricity, na.rm=T),
             q25 = quantile(Emissions.CO2.Energy.Supply.Electricity, 0.25, na.rm=T),
@@ -1040,7 +1048,7 @@ elec_CO2 <- runs %>%
   mutate(Sector="Electricity")
 
 combust_ind_CO2 <- runs %>%
-  filter(Year %in% seq(2020, 2100, 10)) %>%
+  filter(Year %in% seq(2010, 2100, 10)) %>%
   group_by(Year) %>%
   summarise(med = median(Emissions.CO2.Energy.Demand.Industry, na.rm=T),
             q25 = quantile(Emissions.CO2.Energy.Demand.Industry, 0.25, na.rm=T),
@@ -1049,7 +1057,7 @@ combust_ind_CO2 <- runs %>%
   mutate(Sector="Combustion - Industry")
 
 building_CO2 <- runs %>%
-  filter(Year %in% seq(2020, 2100, 10)) %>%
+  filter(Year %in% seq(2010, 2100, 10)) %>%
   group_by(Year) %>%
   summarise(med = median(Emissions.CO2.Energy.Demand.ResidentialandCommercial, na.rm=T),
             q25 = quantile(Emissions.CO2.Energy.Demand.ResidentialandCommercial, 0.25, na.rm=T),
@@ -1058,7 +1066,7 @@ building_CO2 <- runs %>%
   mutate(Sector="Buildings")
 
 afofi_CO2 <- runs %>%
-  filter(Year %in% seq(2020, 2100, 10)) %>%
+  filter(Year %in% seq(2010, 2100, 10)) %>%
   group_by(Year) %>%
   summarise(med = median(Emissions.CO2.Energy.Demand.AFOFI, na.rm=T),
             q25 = quantile(Emissions.CO2.Energy.Demand.AFOFI, 0.25, na.rm=T),
@@ -1067,7 +1075,7 @@ afofi_CO2 <- runs %>%
   mutate(Sector="Agriculture")
 
 trans_CO2 <- runs %>%
-  filter(Year %in% seq(2020, 2100, 10)) %>%
+  filter(Year %in% seq(2010, 2100, 10)) %>%
   group_by(Year) %>%
   summarise(med = median(Emissions.CO2.Energy.Demand.Transportation, na.rm=T),
             q25 = quantile(Emissions.CO2.Energy.Demand.Transportation, 0.25, na.rm=T),
@@ -1076,7 +1084,7 @@ trans_CO2 <- runs %>%
   mutate(Sector="Transport")
 
 afolu_CO2 <- runs %>%
-  filter(Year %in% seq(2020, 2100, 10)) %>%
+  filter(Year %in% seq(2010, 2100, 10)) %>%
   group_by(Year) %>%
   summarise(med = median(Emissions.CO2.AFOLU, na.rm=T),
             q25 = quantile(Emissions.CO2.AFOLU, 0.25, na.rm=T),
@@ -1085,7 +1093,7 @@ afolu_CO2 <- runs %>%
   mutate(Sector="AFOLU")
 
 industry_CO2 <- runs %>%
-  filter(Year %in% seq(2020, 2100, 10)) %>%
+  filter(Year %in% seq(2010, 2100, 10)) %>%
   group_by(Year) %>%
   summarise(med = median(Emissions.CO2.IndustrialProcesses, na.rm=T),
             q25 = quantile(Emissions.CO2.IndustrialProcesses, 0.25, na.rm=T),
@@ -1094,7 +1102,7 @@ industry_CO2 <- runs %>%
   mutate(Sector="Industrial Processes")
 
 total_CO2 <- runs %>%
-  filter(Year %in% seq(2020, 2100, 10)) %>%
+  filter(Year %in% seq(2010, 2100, 10)) %>%
   group_by(Year) %>%
   summarise(med = median(Emissions.CO2, na.rm=T),
             q25 = quantile(Emissions.CO2, 0.25, na.rm=T),
@@ -1125,12 +1133,41 @@ png(file=paste0("plots/sector_emissions_",str_replace(t_lab,"<",""),"_",reg_lab,
 ggplot(CO2_sectors, aes(x=Year, y=med, group=Sector)) +
   geom_hline(yintercept=0, size=0.6, colour="grey50") +
   geom_line(aes(colour=Sector), size=0.8) +
-  geom_ribbon(aes(ymin=q25, ymax=q75, group=Sector, fill=Sector), alpha=0.15) +
+  geom_ribbon(aes(ymin=q25, ymax=q75, group=Sector, fill=Sector), alpha=0.2) +
   labs(title="CO2 emissions by sector", 
        subtitle=paste0("Region: ", reg_lab, ", Warming: ", t_lab),
        x="",
        y="MtCO2/yr") +
-  coord_cartesian(ylim=c(-6000, 13500))
+  coord_cartesian(ylim=c(-1000, 5000)) +
+  scale_colour_manual(values = sector_cols) +
+  scale_fill_manual(values = sector_cols)
+dev.off()
+
+# ---- Power sector emissions only ----
+
+png(file=paste0("plots/power_sector_emissions_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=1200,height=900,res=200,type='cairo')
+ggplot(runs[!is.na(runs$Emissions.CO2.Energy.Supply.Electricity),], aes(x=Year, y=Emissions.CO2.Energy.Supply.Electricity)) +
+  geom_hline(yintercept=0, size=0.8, colour="grey20") +
+  geom_vline(xintercept=2050, size=0.8, colour="grey50", alpha=0.8, linetype=2) +
+  #geom_vline(xintercept=2035, size=0.8, colour="grey50", alpha=0.8, linetype=2) +
+  geom_line(aes(group=mod_scen), size=0.6, colour="#3A91D6", alpha=0.7) +
+  geom_point(size=1.2, colour="#3A91D6") +
+  #geom_ribbon(aes(ymin=q25, ymax=q75, group=Sector, fill=Sector), alpha=0.2) +
+  labs(title="Power sector CO2 emissions", 
+       subtitle=paste0("Region: ", reg_lab, ", Warming: ", t_lab),
+       x="",
+       y="MtCO2/yr") +
+  theme_ember() +
+  theme(axis.text.x=element_text(size=10),
+        axis.text.y=element_text(size=9),
+        axis.title.y=element_text(angle=90),
+        panel.grid.major.y = element_line(colour="grey85", size=0.7)) +
+  scale_x_continuous(limits=c(2010, 2100), breaks=seq(2010,2100,10)) +
+  scale_y_continuous(limits=c(-5000, 5500), breaks=seq(-5000,5000,2500))
+
+  #coord_cartesian(ylim=c(-1000, 4000)) +
+  #scale_colour_manual(values = sector_cols) +
+  #scale_fill_manual(values = sector_cols)
 dev.off()
 
 # ---- Sector emissions reductions ----
@@ -1734,6 +1771,12 @@ ks.test(runs$SecondaryEnergy.Electricity.Wind[runs$Year==yr & runs$CarbonSequest
 ks.test(runs$FinalEnergy.Electricity[runs$Year==yr & runs$CarbonSequestration.CCS.Fossil < med_fccs], runs$FinalEnergy.Electricity[runs$Year==yr])
 ks.test(runs$FinalEnergy.Electricity[runs$Year==yr & runs$CarbonSequestration.CCS.Fossil > med_fccs], runs$FinalEnergy.Electricity[runs$Year==yr])
 
+# Scatter plot of VRES vs fossil CCS
+runs %>% filter(Year==2050) %>%
+  select(cat2, mod_scen, pc.Solar, pc.Wind, pc.Fossil.wCCS) %>%
+  mutate(VRES = pc.Solar + pc.Wind) %>%
+  ggplot(aes(y=VRES, x=pc.Fossil.wCCS, colour=cat2)) +
+  geom_point()
 
 # ---- Biomass changes ----
 # Biomass only
@@ -2148,9 +2191,9 @@ renew_pc_sum <- runs %>%
 coal_pc_sum <- runs %>%
   filter(Year %in% c(2020, 2030, 2040, 2050)) %>%
   group_by(Year, cat2) %>%
-  summarise(med = median(pc.Coal),
-            q25 = quantile(pc.Coal, 0.25),
-            q75 = quantile(pc.Coal, 0.75)) %>%
+  summarise(med = median(pc.Coal.woCCS),
+            q25 = quantile(pc.Coal.woCCS, 0.25),
+            q75 = quantile(pc.Coal.woCCS, 0.75)) %>%
   ungroup() %>%
   mutate(Type="Coal")
 
@@ -2220,106 +2263,227 @@ nuc_pc_sum <- runs %>%
 
 runs_pc_summary <- bind_rows(coal_pc_sum, gas_pc_sum, bio_pc_sum, nuc_pc_sum, solar_pc_sum, wind_pc_sum, filter(ger_pc_sum, Region_ipcc %in% reg_lab))
 
-med_pc_plot <- function(fuel_type) {
-
+# I'm not doing this as a funciton yet, because I expect to have to make bespoke annotations. 
+#med_pc_plot <- function(fuel_type) {
   
-  #med_pc_fuel_cols <- c("Gas"="blue", 
-  #                      "Coal"="red", 
-  #                      "Gas_woCCS_share"="grey20",
-  #                      "Coal_woCCS_share"="grey20",
-  #                      "Coal_share"="grey20",
-  #                      "Renewables"="purple",
-  #                      "Renewables_share"="grey20",
-  #                      "Nuclear_share"="grey20",
-  #                      "Nuclear"="darkorange")
-  #med_pc_fuel_labs <- c("Renewables"="Historic", 
-  #                      "Renewables_share"="Scenarios",
-  #                      "Coal"="Historic",
-  #                      "Gas"="Historic",
-  #                      "Nuclear"="Historic",
-  #                      "Coal_share"="Scenarios",
-  #                      "Coal_woCCS_share"="Scenarios",
-  #                      "Gas_woCCS_share"="Scenarios",
-  #                      "Gas_share"="Scenarios",
-  #                      "Nuclear_share"="Scenarios")
-  
-  #ggplot(filter(runs_pc_summary, Type %in% paste0(fuel_type,"_share")), aes(x=Year, y=med, colour=Type)) + #, group=Type, colour=Type)) +
-  #  geom_errorbar(aes(ymin=q25, ymax=q75), width=1, size=1, colour="grey20") +
-  #  geom_line(size=1) +
-  #  geom_point(size=4, colour="grey10") +
-  #  # individual scenarios?
-  #  geom_line(data=scen_pc, 
-  #            aes(x=Year, y=pc, group=mod_scen), 
-  #            size=0.5, alpha=0.3, colour="grey20") +
-  #  geom_line(data=filter(ger_pc_sum, Region_ipcc %in% reg_lab), 
-  #            aes(x=Year, y=pc, colour=col_var), size=2) +
-  #  labs(x="",
-  #       y="% of electricity generation",
-  #       title=paste("Share of electricity from", fuel_type),
-  #       subtitle=paste0(t_lab,", ",reg_lab),
-  #       colour="") +
-  #  scale_x_continuous(breaks=c(2010, 2020, 2030, 2040, 2050), limits = c(2010, yr_max+2)) +
-  #  scale_color_manual(values=med_pc_fuel_cols, labels=med_pc_fuel_labs)
-  
-  # THIS CODE DOES IT - NOT YET FUNCTIONALISED. 
-  ggplot(filter(runs_pc_summary, Type %in% "Coal", Year %in% c(2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2030,2040,2050)), 
-         aes(x=Year)) +
-    geom_ribbon(aes(ymin=q25, ymax=q75, group=cat2, fill=cat2), alpha=0.4) +
-    geom_line(size=0.8, aes(y=med, group=cat2, colour=cat2)) +
-    geom_point(aes(y=med, colour=cat2), size=2) +
-    # Real data
-    geom_line(aes(y=pc.Gen, color=Type, group=Type), size=1) +
-    labs(x="",
-         y="",
-         title="Share of electricity from coal (unabated) in model pathways",
-         #subtitle=paste0("Region: ", reg_lab),
-         colour="",
-         fill="") +
-    scale_x_continuous(breaks=c(2010, 2020, 2030, 2040, 2050), limits = c(2010, 2050)) +
-    scale_color_manual(values=c("Coal"="red", "1.5C"="skyblue3", "2C"="Coral1"),
-                       labels=c("Coal"="Actuals")) +
-    scale_fill_manual(values=c("1.5C"="skyblue3", "2C"="Coral1")) +
-    guides(fill=F)
-}
-
-
-png(file=paste0("plots/renewables_sum_pc_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=900,height=600,res=150,type='cairo')
-med_pc_plot("Renewables", 2050)
+# COAL - COAL - COAL - COAL - COAL - COAL - COAL - COAL - COAL - COAL - COAL - COAL - COAL - COAL
+png(file=paste0("plots/coal_pc_envelope_",reg_lab,".png"),width=1200,height=800,res=200,type='cairo')
+ggplot(filter(runs_pc_summary, Type %in% "Coal", Year %in% c(2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2030,2040,2050)), 
+       aes(x=Year)) +
+  geom_ribbon(aes(ymin=q25, ymax=q75, group=cat2, fill=cat2), alpha=0.25) +
+  geom_line(size=0.8, aes(y=med, group=cat2, colour=cat2)) +
+  geom_point(aes(y=med, colour=cat2), size=1.5) +
+  # Real data
+  geom_line(aes(y=pc.Gen, color=Type, group=Type), size=1.2) +
+  labs(x="",
+       y="",
+       title="Share of electricity from coal (unabated) in model pathways",
+       subtitle="Unabated coal supplies less than 9% of global electricity by 2030 in 1.5C pathways",
+       colour="",
+       fill="") +
+  theme(text = element_text(size=10),
+        title = element_text(size=8),
+        plot.title = element_text(face="bold"),
+        axis.text.x = element_text(face="bold")) +
+  scale_x_continuous(breaks=c(2010, 2020, 2030, 2040, 2050), limits = c(2010, 2050)) +
+  scale_y_continuous(breaks=c(0,10,20,30,40), labels=c("0%", "10%", "20%", "30%", "40%")) +
+  scale_color_manual(values=c("Coal"="#2F4F4F", "1.5C"="steelblue1", "2C"="coral"),
+                     labels=c("Coal"="Actuals")) +
+  scale_fill_manual(values=c("1.5C"="steelblue1", "2C"="coral")) +
+  guides(fill=F)
 dev.off()
 
-png(file=paste0("plots/coal_sum_pc_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=900,height=600,res=150,type='cairo')
-med_pc_plot("Coal", 2050)
+# GAS - GAS - GAS - GAS - GAS - GAS - GAS - GAS - GAS - GAS - GAS - GAS - GAS - GAS - GAS
+png(file=paste0("plots/gas_pc_envelope_",reg_lab,".png"),width=1200,height=800,res=200,type='cairo')
+ggplot(filter(runs_pc_summary, Type %in% "Gas", Year %in% c(2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2030,2040,2050)), 
+       aes(x=Year)) +
+  geom_ribbon(aes(ymin=q25, ymax=q75, group=cat2, fill=cat2), alpha=0.25) +
+  geom_line(size=0.8, aes(y=med, group=cat2, colour=cat2)) +
+  geom_point(aes(y=med, colour=cat2), size=1.5) +
+  # Real data
+  geom_line(aes(y=pc.Gen, color=Type, group=Type), size=1.2) +
+  labs(x="",
+       y="",
+       title="Share of electricity from fossil gas (unabated) in model pathways",
+       subtitle="Generation enters immediate decline in 1.5C pathways, with 2C not far behind",
+       colour="",
+       fill="") +
+  theme(text = element_text(size=10),
+        title = element_text(size=8),
+        plot.title = element_text(face="bold"),
+        axis.text.x = element_text(face="bold")) +
+  scale_x_continuous(breaks=c(2010, 2020, 2030, 2040, 2050), limits = c(2010, 2050)) +
+  scale_y_continuous(breaks=c(0,10,20,30), labels=c("0%", "10%", "20%", "30%")) +
+  scale_color_manual(values=c("Gas"="#3A91D6", "1.5C"="steelblue1", "2C"="coral"),
+                     labels=c("Gas"="Actuals")) +
+  scale_fill_manual(values=c("1.5C"="steelblue1", "2C"="coral")) +
+  guides(fill=F)
 dev.off()
 
-png(file=paste0("plots/gas_woCCS_sum_pc_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=900,height=600,res=150,type='cairo')
-med_pc_plot("Gas_woCCS", 2050)
+# BIOMASS - BIOMASS - BIOMASS - BIOMASS - BIOMASS - BIOMASS - BIOMASS - BIOMASS - BIOMASS - BIOMASS
+png(file=paste0("plots/biomass_pc_envelope_",reg_lab,".png"),width=1200,height=800,res=200,type='cairo')
+ggplot(filter(runs_pc_summary, Type %in% "Biomass", Year %in% c(2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2030,2040,2050)), 
+       aes(x=Year)) +
+  geom_ribbon(aes(ymin=q25, ymax=q75, group=cat2, fill=cat2), alpha=0.25) +
+  geom_line(size=0.8, aes(y=med, group=cat2, colour=cat2)) +
+  geom_point(aes(y=med, colour=cat2), size=1.5) +
+  # Real data
+  geom_line(aes(y=pc.Gen, color=Type, group=Type), size=1.2) +
+  labs(x="",
+       y="",
+       title="Share of electricity from Biomass (unabated) in model pathways",
+       subtitle="Biomass without CCS takes a decreasing share to 2050",
+       colour="",
+       fill="") +
+  theme(text = element_text(size=10),
+        title = element_text(size=8),
+        plot.title = element_text(face="bold"),
+        axis.text.x = element_text(face="bold")) +
+  scale_x_continuous(breaks=c(2010, 2020, 2030, 2040, 2050), limits = c(2010, 2050)) +
+  scale_y_continuous(breaks=c(0,1,2,3), labels=c("0%", "1%", "2%", "3%"), limits=c(0,3)) +
+  scale_color_manual(values=c("Biomass"="#60BC5D", "1.5C"="steelblue1", "2C"="coral"),
+                     labels=c("Biomass"="Actuals")) +
+  scale_fill_manual(values=c("1.5C"="steelblue1", "2C"="coral")) +
+  guides(fill=F)
 dev.off()
 
-png(file=paste0("plots/nuclear_sum_pc_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=900,height=600,res=150,type='cairo')
-med_pc_plot("Nuclear", 2050)
+# NUCLEAR - NUCLEAR- NUCLEAR- NUCLEAR- NUCLEAR- NUCLEAR- NUCLEAR- NUCLEAR- NUCLEAR- NUCLEAR- NUCLEAR
+png(file=paste0("plots/nuclear_pc_envelope_",reg_lab,".png"),width=1200,height=800,res=200,type='cairo')
+ggplot(filter(runs_pc_summary, Type %in% "Nuclear", Year %in% c(2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2030,2040,2050)), 
+       aes(x=Year)) +
+  geom_ribbon(aes(ymin=q25, ymax=q75, group=cat2, fill=cat2), alpha=0.25) +
+  geom_line(size=0.8, aes(y=med, group=cat2, colour=cat2)) +
+  geom_point(aes(y=med, colour=cat2), size=1.5) +
+  # Real data
+  geom_line(aes(y=pc.Gen, color=Type, group=Type), size=1.2) +
+  labs(x="",
+       y="",
+       title="Share of electricity from nuclear in model pathways",
+       subtitle="Nuclear remains a fixture of global electricity, as Asian growth offsets declines elsewhere",
+       colour="",
+       fill="") +
+  theme(text = element_text(size=10),
+        title = element_text(size=8),
+        plot.title = element_text(face="bold"),
+        axis.text.x = element_text(face="bold")) +
+  scale_x_continuous(breaks=c(2010, 2020, 2030, 2040, 2050), limits = c(2010, 2050)) +
+  scale_y_continuous(breaks=c(0,5,10,15,20), labels=c("0%", "5%", "10%", "15%", "20%"), limits = c(0,20)) +
+  scale_color_manual(values=c("Nuclear"="#AA47B9", "1.5C"="steelblue1", "2C"="coral"),
+                     labels=c("Nuclear"="Actuals")) +
+  scale_fill_manual(values=c("1.5C"="steelblue1", "2C"="coral")) +
+  guides(fill=F)
 dev.off()
-# ---- 1.5 vs 2C fuel share in 2050 ----
+
+# SOLAR - SOLAR - SOLAR - SOLAR - SOLAR - SOLAR - SOLAR - SOLAR - SOLAR - SOLAR - SOLAR - SOLAR - SOLAR
+png(file=paste0("plots/solar_pc_envelope_",reg_lab,".png"),width=1200,height=800,res=200,type='cairo')
+ggplot(filter(runs_pc_summary, Type %in% "Solar", Year %in% c(2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2030,2040,2050)), 
+       aes(x=Year)) +
+  geom_ribbon(aes(ymin=q25, ymax=q75, group=cat2, fill=cat2), alpha=0.25) +
+  geom_line(size=0.8, aes(y=med, group=cat2, colour=cat2)) +
+  geom_point(aes(y=med, colour=cat2), size=1.5) +
+  # Real data
+  geom_line(aes(y=pc.Gen, color=Type, group=Type), size=1.2) +
+  labs(x="",
+       y="",
+       title="Share of electricity from solar in model pathways",
+       subtitle="Solar's share increases significantly faster in 1.5C than 2C pathways",
+       colour="",
+       fill="") +
+  theme(text = element_text(size=10),
+        title = element_text(size=8),
+        plot.title = element_text(face="bold"),
+        axis.text.x = element_text(face="bold")) +
+  scale_x_continuous(breaks=c(2010, 2020, 2030, 2040, 2050), limits = c(2010, 2050)) +
+  scale_y_continuous(breaks=c(0,10,20,30,40,50), labels=c("0%", "10%", "20%", "30%", "40%", "50%"), limits = c(0,52)) +
+  scale_color_manual(values=c("Solar"="#FFC300", "1.5C"="steelblue1", "2C"="coral"),
+                     labels=c("Solar"="Actuals")) +
+  scale_fill_manual(values=c("1.5C"="steelblue1", "2C"="coral")) +
+  guides(fill=F)
+dev.off()
+
+
+# WIND - WIND - WIND - WIND - WIND - WIND - WIND - WIND - WIND - WIND - WIND - WIND - WIND - WIND - WIND
+png(file=paste0("plots/wind_pc_envelope_",reg_lab,".png"),width=1200,height=800,res=200,type='cairo')
+ggplot(filter(runs_pc_summary, Type %in% "Wind", Year %in% c(2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2030,2040,2050)), 
+       aes(x=Year)) +
+  geom_ribbon(aes(ymin=q25, ymax=q75, group=cat2, fill=cat2), alpha=0.25) +
+  geom_line(size=0.8, aes(y=med, group=cat2, colour=cat2)) +
+  geom_point(aes(y=med, colour=cat2), size=1.5) +
+  # Real data
+  geom_line(aes(y=pc.Gen, color=Type, group=Type), size=1.2) +
+  labs(x="",
+       y="",
+       title="Share of electricity from wind in model pathways",
+       subtitle="Wind growth is more certain than solar, due to a narrower range of cost projections",
+       colour="",
+       fill="") +
+  theme(text = element_text(size=10),
+        title = element_text(size=8),
+        plot.title = element_text(face="bold"),
+        axis.text.x = element_text(face="bold")) +
+  scale_x_continuous(breaks=c(2010, 2020, 2030, 2040, 2050), limits = c(2010, 2050)) +
+  scale_y_continuous(breaks=c(0,10,20,30,40), labels=c("0%", "10%", "20%", "30%", "40%"), limits = c(0,41)) +
+  scale_color_manual(values=c("Wind"="#FF624E", "1.5C"="steelblue1", "2C"="coral"),
+                     labels=c("Wind"="Actuals")) +
+  scale_fill_manual(values=c("1.5C"="steelblue1", "2C"="coral")) +
+  guides(fill=F)
+dev.off()
+
+
+#png(file=paste0("plots/renewables_sum_pc_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=900,height=600,res=150,type='cairo')
+#med_pc_plot("Renewables", 2050)
+#dev.off()
+#
+#png(file=paste0("plots/coal_sum_pc_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=900,height=600,res=150,type='cairo')
+#med_pc_plot("Coal", 2050)
+#dev.off()
+#
+#png(file=paste0("plots/gas_woCCS_sum_pc_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=900,height=600,res=150,type='cairo')
+#med_pc_plot("Gas_woCCS", 2050)
+#dev.off()
+#
+#png(file=paste0("plots/nuclear_sum_pc_",str_replace(t_lab,"<",""),"_",reg_lab,".png"),width=900,height=600,res=150,type='cairo')
+#med_pc_plot("Nuclear", 2050)
+#dev.off()
+# ---- PUB fuel share 1.5 vs 2C in 2050 ----
 yr <- 2050
 pc.today <- filter(ger_pc_sum, 
                    Region_ipcc %in% reg_lab,
-                   Year == 2019) %>%
-  select(pc.Hydro, pc.Wind, pc.Solar, pc.Nuclear, pc.Biomass, pc.Gas, pc.Coal) %>%
-  pivot_longer(pc.Hydro:pc.Coal, names_to="Fuel", values_to="pc.Gen", names_prefix="pc.") %>%
-  mutate(Col="2019")
+                   Year == 2019,
+                   !Type %in% "Hydro") %>%
+  mutate(Type = replace(Type, Type == "Coal", "Coal\n(unabated)"),
+         Type = replace(Type, Type == "Gas", "Gas\n(unabated)"),
+         Type = replace(Type, Type == "Biomass", "Biomass\n(unabated)"))
+  #bind_rows(tibble(Year=c(2019, 2019),
+  #                 Type=c("")))
 
 png(file=paste0("plots/electricity_mix_",yr,"_",reg_lab,".png"),width=1400,height=900,res=200,type='cairo')
 runs %>% filter(Year == yr) %>%
-  select(cat2, pc.Wind, pc.Solar, pc.Hydro, pc.Nuclear, pc.Coal, pc.Gas, pc.Biomass) %>%
-  pivot_longer(pc.Wind:pc.Biomass, names_to="Fuel", values_to="pc.Gen", names_prefix = "pc.") %>%
-  mutate(Fuel = factor(Fuel, ordered=T, levels=c("Wind", "Solar", "Hydro", "Nuclear", "Gas", "Biomass", "Coal"))) %>%
+  select(cat2, pc.Wind, pc.Solar, pc.Nuclear, pc.Coal.woCCS, pc.Gas.woCCS, pc.Biomass.woCCS, pc.Fossil.wCCS, pc.Biomass.wCCS) %>%
+  pivot_longer(pc.Wind:pc.Biomass.wCCS, names_to="Fuel", values_to="pc.Gen", names_prefix = "pc.") %>%
+  mutate(Fuel = replace(Fuel, Fuel %in% "Gas.woCCS", "Gas\n(unabated)"),
+         Fuel = replace(Fuel, Fuel %in% "Coal.woCCS", "Coal\n(unabated)"),
+         Fuel = replace(Fuel, Fuel %in% "Biomass.woCCS", "Biomass\n(unabated)"),
+         Fuel = replace(Fuel, Fuel %in% "Fossil.wCCS", "Fossil CCS"),
+         Fuel = replace(Fuel, Fuel %in% "Biomass.wCCS", "BECCS")) %>%
+  mutate(Fuel = factor(Fuel, ordered=T, levels=c("Wind", "Solar", "Nuclear", "Gas\n(unabated)", "Coal\n(unabated)", "Biomass\n(unabated)", "Fossil CCS", "BECCS"))) %>%
   ggplot(aes(x=Fuel, y=pc.Gen, colour=cat2)) +
-  geom_boxplot() +
-  geom_point(data=pc.today, aes(x=Fuel, y=pc.Gen, fill=Col), inherit.aes = F, size=4, shape=23, colour="grey20") +
-  scale_fill_manual(values=c("2019"="springgreen2")) +
-  scale_y_continuous(breaks=c(0, 10, 20, 30, 40, 50, 60), labels=c("0%","10%", "20%", "30%", "40%", "50%", "60%")) +
+  geom_boxplot(coef = 100, aes(fill=cat2, colour=cat2)) +
+  #geom_point(data=pc.today, 
+  #           aes(x=Type, y=pc.Gen), inherit.aes = F, size=4, shape=16, colour="grey20") +
+  geom_errorbar(data=pc.today, 
+             aes(x=Type, ymax=pc.Gen, ymin=pc.Gen), inherit.aes = F, colour="grey10", size=1) +
+  geom_text(data=tibble(x="Coal\n(unabated)", 
+                        y=2.5 + pc.today$pc.Gen[pc.today$Region_ipcc==reg_lab & pc.today$Type=="Coal\n(unabated)"], 
+                        label="2019"), 
+            aes(x=x, y=y, label=label), colour="grey10", inherit.aes = F) +
+  #geom_errorbar(data=pc.today, aes(x=Type, ymax=pc.Gen, ymin=pc.Gen), inherit.aes = F, colour="white") +
+  scale_fill_manual(values=cat_cols) +
+  scale_y_continuous(breaks=c(0, 10, 20, 30, 40, 50, 60, 70), labels=c("0%","10%", "20%", "30%", "40%", "50%", "60%", "70%")) +
   labs(x="", y="Share of electricity production", colour="", fill="", 
        title=paste0("Electricity mix in ",yr), 
-       subtitle=reg_lab)
+       subtitle=reg_lab) +
+  scale_colour_manual(values=cat_cols)
 dev.off()
 
 # ---- Fossil CCS ----
@@ -2786,6 +2950,7 @@ runs %>% filter(Year == 2050) %>%
          title="Electrification is only a weak driver of electricity demand to 2050")
 dev.off()
 
+# Demand vs VRES share
 png(file=paste0("plots/res-penetration_vs_demand_2050_",reg_lab,".png"),width=1200,height=800,res=200,type='cairo')
 runs %>% filter(Year == 2050) %>%
   select(cat2, SecondaryEnergy.Electricity, FinalEnergy.Electricity, SecondaryEnergy.Electricity.Wind, SecondaryEnergy.Electricity.Solar) %>%
@@ -2800,7 +2965,58 @@ runs %>% filter(Year == 2050) %>%
        title="RES penetration correlates with electricity demand in 2050"
        )
 dev.off()
+
+#Demand vs Fossil CCS share
+png(file=paste0("plots/fossil-ccs_vs_demand_2050_",reg_lab,".png"),width=1200,height=800,res=200,type='cairo')
+runs %>% filter(Year == 2050) %>%
+  select(cat2, FinalEnergy.Electricity, pc.Fossil.wCCS) %>%
+  ggplot(aes(x=278*FinalEnergy.Electricity, 
+             y=pc.Fossil.wCCS,
+             colour=cat2)) +
+  geom_point(size=2) +
+  #lims(y=c(0,70)) +
+  labs(x="Electricity Generation (TWh)",
+       y="",
+       colour="",
+       title="Fossil CCS vs electricity demand in 2050",
+       subtitle="The share fossil CCS is not correlated with demand."
+  )
+dev.off()
   
+# Demand vs Fossil CCS generation
+png(file=paste0("plots/fossil-ccs-gen_vs_demand_2050_",reg_lab,".png"),width=1200,height=800,res=200,type='cairo')
+runs %>% filter(Year == 2050) %>%
+  select(cat2, FinalEnergy.Electricity, SecondaryEnergy.Electricity.Fossil.wCCS) %>%
+  ggplot(aes(x=278*FinalEnergy.Electricity, 
+             y=278*SecondaryEnergy.Electricity.Fossil.wCCS,
+             colour=cat2)) +
+  geom_point(size=2) +
+  #lims(y=c(0,70)) +
+  labs(x="Electricity Generation (TWh)",
+       y="",
+       colour="",
+       title="Fossil CCS generation vs electricity demand in 2050",
+       subtitle="fossil CCS is not correlated with demand."
+  )
+dev.off()
+
+# Demand vs Nuclear generation
+png(file=paste0("plots/nuclear-gen_vs_demand_2050_",reg_lab,".png"),width=1200,height=800,res=200,type='cairo')
+runs %>% filter(Year == 2050) %>%
+  select(cat2, FinalEnergy.Electricity, SecondaryEnergy.Electricity.Nuclear) %>%
+  ggplot(aes(x=278*FinalEnergy.Electricity, 
+             y=278*SecondaryEnergy.Electricity.Nuclear,
+             colour=cat2)) +
+  geom_point(size=2) +
+  #lims(y=c(0,70)) +
+  labs(x="Electricity Generation (TWh)",
+       y="",
+       colour="",
+       title="Nuclear generation vs electricity demand in 2050",
+       subtitle="Nuclear is not correlated with demand."
+  )
+dev.off()
+
 runs %>% filter(Year %in% seq(2020,2100,10)) %>%
     select(cat2, Year, FinalEnergy, FinalEnergy.Electricity) %>%
     ggplot(aes(x=278*FinalEnergy.Electricity, 
@@ -2850,6 +3066,7 @@ runs %>% filter(Year == 2050) %>%
 #     title="")
 dev.off()
 
+
 png(file=paste0("plots/pcfccs_vs_pcVRES_pen_2050_",reg_lab,".png"),width=1200,height=800,res=200,type='cairo')
 runs %>% filter(Year == 2050) %>%
   select(cat2, pc.Fossil.wCCS, pc.Wind, pc.Solar) %>%
@@ -2857,14 +3074,21 @@ runs %>% filter(Year == 2050) %>%
   ggplot(aes(x=pc.Fossil.wCCS,
              y=pc.VRES,
              colour=cat2)) +
-  geom_point(size=2) 
+  geom_point(size=2) +
   #geom_vline(xintercept=3915)
 #lims(y=c(0,70)) +
-#labs(x="",
-#     y="",
-#     colour="",
-#     title="")
+  theme(text = element_text(size=9),
+        panel.background = element_rect(colour="grey50"),
+        panel.grid.major.x = element_line(colour="grey90")) +
+  labs(title="Share of electricity from fossil CCS vs VRES in 2050",
+       subtitle="High fossil CCS is associated exclusively with low VRES penetration",
+       x="Fossil CCS (%)",
+       y="VRES (%)",
+       colour="") +
+  scale_colour_manual(values=cat_cols)
 dev.off()
+
+# TRY ABOVE FOR SOLAR?
 
 png(file=paste0("plots/pcfccs_vs_pcRES_pen_2050_",reg_lab,".png"),width=1200,height=800,res=200,type='cairo')
 runs %>% filter(Year == 2050) %>%

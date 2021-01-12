@@ -6,20 +6,6 @@ filter_runs <- function(runs, temp_cats, reg="World", limits, ms_exclude) {
   
   # Select runs that meet temp criteria
   runs <- runs %>% filter(category %in% temp_cats)
-
-  # calculate 2040-2060 average
-  #runs_avg <- runs %>% 
-  #  filter(Year>=2040, 
-  #         Year<=2060, 
-  #         Region %in% "World") %>%
-  #  select(mod_scen, 
-  #         CarbonSequestration.CCS.Biomass,
-  #         CarbonSequestration.LandUse) %>%
-  #  #replace(is.na(.),0) %>%
-  #  group_by(mod_scen) %>%
-  #  summarise(avg_beccs = mean(CarbonSequestration.CCS.Biomass, na.rm=T),
-  #            avg_af = mean(CarbonSequestration.LandUse, na.rm=T)) %>%
-  #  replace(is.na(.), 0)
   
   # --- BECCS & Bioenergy - global
   bio_lim <- limits["bio"]
